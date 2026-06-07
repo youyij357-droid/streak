@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendAdminNotification, sendWelcomeEmail } from '@/lib/email/resend';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -33,6 +34,15 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const appliedAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://streak.io'}/dashboard`;
+
+    // メール送信（失敗しても登録自体は成功扱い）
+    await Promise.allSettled([
+      sendAdminNotification({ shopName, walletAddress, email, appliedAt }),
+      email ? sendWelcomeEmail({ shopName, toEmail: email, dashboardUrl }) : Promise.resolve(),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {
