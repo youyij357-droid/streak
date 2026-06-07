@@ -42,6 +42,8 @@ export default function PrivacyPage() {
               <p className="text-sm text-gray-700 mt-2">お問い合わせ先：support@streak.io</p>
             </div>
           </Section>
+
+          <Section title="Information We Collect" titleJa="収集する個人情報">
             <p>
               当社は、本サービスの提供に必要な限度において、以下の個人情報を収集します：
             </p>

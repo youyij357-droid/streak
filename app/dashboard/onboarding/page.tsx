@@ -1,10 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -192,5 +191,13 @@ export default function OnboardingPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24"><p className="text-gray-400 font-light">Loading...</p></div>}>
+      <OnboardingContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 type Language = 'EN' | 'JP';
@@ -52,7 +52,7 @@ const translations = {
   },
 };
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const walletAddress = searchParams.get('wallet') || '';
@@ -298,5 +298,13 @@ export default function OnboardingPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><p className="text-gray-400 font-light">Loading...</p></div>}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
