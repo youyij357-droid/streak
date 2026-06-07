@@ -83,8 +83,6 @@ function LoginInner({ language }: { language: Language }) {
       setIsAuthLoading(true);
       setError('');
 
-      console.log('[Login] Calling /api/auth/wallet with address:', walletAddr);
-
       const response = await fetch('/api/auth/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +90,6 @@ function LoginInner({ language }: { language: Language }) {
       });
 
       const data = await response.json();
-      console.log('[Login] API response:', data);
 
       if (!response.ok) {
         throw new Error(data?.error ?? t.errors.authError);
@@ -110,7 +107,6 @@ function LoginInner({ language }: { language: Language }) {
         router.push('/dashboard');
       }
     } catch (err) {
-      console.error('[Login] Auth error:', err);
       setError(err instanceof Error ? err.message : t.errors.authError);
       calledRef.current = false; // 再試行可能にする
     } finally {
@@ -150,7 +146,6 @@ function LoginInner({ language }: { language: Language }) {
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Email signup:', email);
   };
 
   const isLoading = isConnecting || isAuthLoading;

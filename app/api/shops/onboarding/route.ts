@@ -28,16 +28,14 @@ export async function POST(request: NextRequest) {
       .eq('id', shopId);
 
     if (error) {
-      console.error('[Shops/Onboarding] Update error:', error.code, error.message, error.details);
       return NextResponse.json(
-        { error: 'Failed to update shop', detail: error.message, code: error.code },
+        { error: 'Failed to update shop', detail: error.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[Shops/Onboarding] Unexpected error:', err);
     return NextResponse.json(
       { error: 'Unexpected error', detail: err instanceof Error ? err.message : String(err) },
       { status: 500 }

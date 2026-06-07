@@ -97,8 +97,8 @@ function WalletPayment({
           amountUsdc: product.price_usdc,
         }),
       });
-    } catch (err) {
-      console.error('Failed to save order:', err);
+    } catch {
+      // order save failure does not block the thank-you flow
     }
     onSuccess(hash);
   };

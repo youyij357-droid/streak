@@ -130,7 +130,6 @@ function ProductModal({
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [shopId, setShopId] = useState<string | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [shopError, setShopError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -138,11 +137,7 @@ export default function ProductsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    // localStorage からセッション情報を取得
     const storedShopId = localStorage.getItem('streak-shop-id');
-    const storedWallet = localStorage.getItem('streak-wallet');
-
-    console.log('[Products] localStorage - shopId:', storedShopId, 'wallet:', storedWallet);
 
     if (!storedShopId) {
       setShopError('セッションが見つかりません。ウォレットを再接続してください。');
@@ -151,7 +146,6 @@ export default function ProductsPage() {
     }
 
     setShopId(storedShopId);
-    setWalletAddress(storedWallet);
     fetchProducts(storedShopId);
   }, []);
 
@@ -165,15 +159,13 @@ export default function ProductsPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[Products] Fetch error:', error.code, error.message, error.details);
-        setShopError(`商品取得エラー: ${error.message} (${error.code})`);
+        setShopError(`商品取得エラー: ${error.message}`);
         return;
       }
 
-      console.log('[Products] Fetched', data?.length ?? 0, 'products for shop:', sid);
       setProducts(data || []);
-    } catch (err) {
-      console.error('[Products] Unexpected fetch error:', err);
+    } catch {
+      setShopError('商品の読み込みに失敗しました。');
     } finally {
       setIsInitialLoad(false);
     }
@@ -196,16 +188,13 @@ export default function ProductsPage() {
   };
 
   const handleSaveProduct = async (formData: any) => {
-    if (!shopId) {
-      alert('ショップ情報がありません。ウォレットを再接続してください。');
-      return;
-    }
+    if (!shopId) return;
 
     try {
       setIsLoading(true);
       const supabase = createClient();
 
-      const newProduct = {
+      const { error } = await supabase.from('products').insert([{
         shop_id: shopId,
         name: formData.name,
         price_usdc: parseFloat(formData.price),
@@ -214,22 +203,14 @@ export default function ProductsPage() {
         is_published: formData.is_published,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      };
+      }]);
 
-      console.log('[Products] Inserting product:', newProduct);
-
-      const { error } = await supabase.from('products').insert([newProduct]);
-
-      if (error) {
-        console.error('[Products] Insert error:', error.code, error.message, error.details, error.hint);
-        throw error;
-      }
+      if (error) throw error;
 
       setIsModalOpen(false);
       await fetchProducts(shopId);
     } catch (err: any) {
-      console.error('[Products] handleSaveProduct failed:', err);
-      alert(`商品の保存に失敗しました:\n${err?.message ?? String(err)}\ncode: ${err?.code ?? '-'}`);
+      setShopError(err?.message ?? '商品の保存に失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -237,43 +218,27 @@ export default function ProductsPage() {
 
   const handleTogglePublish = async (productId: string, currentStatus: boolean) => {
     if (!shopId) return;
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('products')
-        .update({ is_published: !currentStatus })
-        .eq('id', productId)
-        .eq('shop_id', shopId);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('products')
+      .update({ is_published: !currentStatus })
+      .eq('id', productId)
+      .eq('shop_id', shopId);
 
-      if (error) {
-        console.error('[Products] Toggle publish error:', error.message);
-        return;
-      }
-      await fetchProducts(shopId);
-    } catch (err) {
-      console.error('[Products] handleTogglePublish failed:', err);
-    }
+    if (!error) await fetchProducts(shopId);
   };
 
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     if (!shopId) return;
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId)
-        .eq('shop_id', shopId);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+      .eq('shop_id', shopId);
 
-      if (error) {
-        console.error('[Products] Delete error:', error.message);
-        return;
-      }
-      await fetchProducts(shopId);
-    } catch (err) {
-      console.error('[Products] handleDeleteProduct failed:', err);
-    }
+    if (!error) await fetchProducts(shopId);
   };
 
   return (
@@ -286,7 +251,7 @@ export default function ProductsPage() {
         </div>
         <button
           onClick={() => {
-            if (!shopId) { alert('ウォレットを再接続してください。'); return; }
+            if (!shopId) return;
             setIsModalOpen(true);
           }}
           className="px-6 py-3 rounded-full bg-black text-white font-semibold hover:shadow-lg hover:shadow-black/30 transition-all"
@@ -308,16 +273,6 @@ export default function ProductsPage() {
           >
             再ログイン
           </a>
-        </div>
-      )}
-
-      {/* デバッグ情報（開発時のみ） */}
-      {process.env.NODE_ENV === 'development' && !isInitialLoad && (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs font-mono text-gray-500 space-y-1">
-          <p>🔍 DEBUG</p>
-          <p>shop_id: {shopId ?? 'null'}</p>
-          <p>wallet: {walletAddress ?? 'null'}</p>
-          <p>products: {products.length}</p>
         </div>
       )}
 

@@ -40,7 +40,6 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Insert error:', error)
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
@@ -54,7 +53,6 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Auth error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

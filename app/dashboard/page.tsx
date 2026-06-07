@@ -122,8 +122,8 @@ export default function DashboardPage() {
         if (productsData) {
           setActiveProducts(productsData.length.toString());
         }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+      } catch {
+        // fetch failure is silent; UI shows placeholder values
       } finally {
         setIsLoading(false);
       }

@@ -119,20 +119,16 @@ function OnboardingContent() {
 
       const result = await response.json();
       if (!response.ok) {
-        console.error('[Onboarding] API error:', result);
         throw new Error(result.detail ?? result.error ?? t.error);
       }
 
       setSuccess(true);
 
-      // Redirect to dashboard after 1 second
       setTimeout(() => {
         router.push('/dashboard');
       }, 1000);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : t.error;
-      setError(errorMsg);
-      console.error('Onboarding error:', err);
+      setError(err instanceof Error ? err.message : t.error);
     } finally {
       setIsLoading(false);
     }

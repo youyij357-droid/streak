@@ -64,7 +64,6 @@ function OnboardingContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        console.error('[Onboarding] API error:', result);
         throw new Error(result.detail ?? result.error ?? 'ショップの作成に失敗しました');
       }
 
@@ -72,7 +71,6 @@ function OnboardingContent() {
       setTimeout(() => router.push('/dashboard'), 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
-      console.error('[Onboarding] Submit error:', err);
     } finally {
       setIsLoading(false);
     }
