@@ -15,13 +15,13 @@ export default defineConfig({
       type: "http",
       chainId: 137,
       url: "https://polygon-mainnet.g.alchemy.com/v2/0D6-fbec545ZFS6JLNexN",
-      accounts: [process.env.PRIVATE_KEY],
+      accounts: [process.env.PRIVATE_KEY!],
     },
     amoy: {
       type: "http",
       chainId: 80002,
       url: "https://polygon-amoy.g.alchemy.com/v2/0D6-fbec545ZFS6JLNexN",
-      accounts: [process.env.PRIVATE_KEY],
+      accounts: [process.env.PRIVATE_KEY!],
     },
   },
 });

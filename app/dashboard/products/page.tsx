@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { jpyToUsdc } from '@/lib/exchange/rate';
 
 interface Product {
   id: string;
   name: string;
+  price_jpy: number | null;
   price_usdc: number;
   category: string;
   description?: string;
@@ -20,21 +22,52 @@ function ProductModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: {
+    name: string;
+    priceJpy: number;
+    priceUsdcSnapshot: number;
+    description: string;
+    category: string;
+    is_published: boolean;
+  }) => Promise<void>;
   isLoading: boolean;
 }) {
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
+    priceJpy: '',
     description: '',
     category: 'Digital',
     is_published: true,
   });
+  const [usdcRate, setUsdcRate] = useState<number | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setRateLoading(true);
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=jpy')
+      .then((r) => r.json())
+      .then((d) => setUsdcRate(d['usd-coin'].jpy))
+      .catch(() => setUsdcRate(null))
+      .finally(() => setRateLoading(false));
+  }, [isOpen]);
+
+  const priceJpyNum = parseFloat(formData.priceJpy) || 0;
+  const priceUsdcPreview =
+    usdcRate && priceJpyNum ? jpyToUsdc(priceJpyNum, usdcRate).toFixed(4) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave(formData);
-    setFormData({ name: '', price: '', description: '', category: 'Digital', is_published: true });
+    const snapshotRate = usdcRate ?? 150;
+    await onSave({
+      name: formData.name,
+      priceJpy: priceJpyNum,
+      priceUsdcSnapshot: jpyToUsdc(priceJpyNum, snapshotRate),
+      description: formData.description,
+      category: formData.category,
+      is_published: formData.is_published,
+    });
+    setFormData({ name: '', priceJpy: '', description: '', category: 'Digital', is_published: true });
   };
 
   if (!isOpen) return null;
@@ -57,18 +90,33 @@ function ProductModal({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-black focus:outline-none transition font-light placeholder-gray-400"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Price (USDC)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="0.00"
-              required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-black focus:outline-none transition font-light placeholder-gray-400"
-            />
+            <label className="block text-sm font-semibold text-gray-900 mb-2">価格（円）</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium select-none">
+                ¥
+              </span>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                value={formData.priceJpy}
+                onChange={(e) => setFormData({ ...formData, priceJpy: e.target.value })}
+                placeholder="10000"
+                required
+                className="w-full pl-8 pr-4 py-3 rounded-lg border border-gray-300 focus:border-black focus:outline-none transition font-light placeholder-gray-400"
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              {rateLoading
+                ? 'レート取得中...'
+                : usdcRate
+                ? `現在のレート：1 USDC ≈ ¥${usdcRate.toFixed(0)}${priceUsdcPreview ? ` / ≈ ${priceUsdcPreview} USDC` : ''}`
+                : 'レート取得に失敗しました（フォールバック: 1 USDC = ¥150）'}
+            </p>
           </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">Description</label>
             <textarea
@@ -79,6 +127,7 @@ function ProductModal({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-black focus:outline-none transition font-light placeholder-gray-400 resize-none"
             />
           </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">Category</label>
             <select
@@ -92,6 +141,7 @@ function ProductModal({
               <option value="NFT">NFT</option>
             </select>
           </div>
+
           <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-200">
             <label className="text-sm font-semibold text-gray-900">Publish Immediately</label>
             <button
@@ -104,6 +154,7 @@ function ProductModal({
               />
             </button>
           </div>
+
           <div className="flex gap-4 pt-4">
             <button
               type="button"
@@ -187,7 +238,14 @@ export default function ProductsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSaveProduct = async (formData: any) => {
+  const handleSaveProduct = async (formData: {
+    name: string;
+    priceJpy: number;
+    priceUsdcSnapshot: number;
+    description: string;
+    category: string;
+    is_published: boolean;
+  }) => {
     if (!shopId) return;
 
     try {
@@ -197,7 +255,8 @@ export default function ProductsPage() {
       const { error } = await supabase.from('products').insert([{
         shop_id: shopId,
         name: formData.name,
-        price_usdc: parseFloat(formData.price),
+        price_jpy: formData.priceJpy,
+        price_usdc: formData.priceUsdcSnapshot,
         description: formData.description || null,
         category: formData.category,
         is_published: formData.is_published,
@@ -302,7 +361,7 @@ export default function ProductsPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Price (USDC)</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Price</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Category</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900">Payment Link</th>
@@ -313,8 +372,21 @@ export default function ProductsPage() {
                 {products.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-gray-900 font-medium">{product.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
-                      ${product.price_usdc.toFixed(2)}
+                    <td className="px-6 py-4">
+                      {product.price_jpy != null ? (
+                        <div>
+                          <p className="text-sm text-gray-900 font-semibold">
+                            ¥{product.price_jpy.toLocaleString('ja-JP')}
+                          </p>
+                          <p className="text-xs text-gray-400 font-light">
+                            ≈ ${product.price_usdc.toFixed(2)} USDC
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-900 font-semibold">
+                          ${product.price_usdc.toFixed(2)} USDC
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-light">{product.category}</td>
                     <td className="px-6 py-4">

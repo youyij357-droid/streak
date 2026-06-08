@@ -31,6 +31,7 @@ interface Product {
   id: string;
   name: string;
   price_usdc: number;
+  price_jpy: number | null;
   description?: string;
   category: string;
   is_published: boolean;
@@ -62,10 +63,14 @@ function ThankYouView({ shopName }: { shopName: string }) {
 function WalletPayment({
   shop,
   product,
+  priceUsdc,
+  priceJpy,
   onSuccess,
 }: {
   shop: Shop;
   product: Product;
+  priceUsdc: number;
+  priceJpy: number | null;
   onSuccess: (txHash: string) => void;
 }) {
   const { isConnected } = useAccount();
@@ -94,7 +99,7 @@ function WalletPayment({
           productId: product.id,
           txHash: hash,
           paymentMethod: 'wallet',
-          amountUsdc: product.price_usdc,
+          amountUsdc: priceUsdc,
         }),
       });
     } catch {
@@ -104,7 +109,7 @@ function WalletPayment({
   };
 
   const handlePay = () => {
-    const amount = BigInt(Math.round(product.price_usdc * 1_000_000));
+    const amount = BigInt(Math.round(priceUsdc * 1_000_000));
     writeContract({
       address: USDC_POLYGON,
       abi: ERC20_TRANSFER_ABI,
@@ -112,6 +117,10 @@ function WalletPayment({
       args: [shop.wallet_address as `0x${string}`, amount],
     });
   };
+
+  const payLabel = priceJpy
+    ? `Pay ¥${priceJpy.toLocaleString('ja-JP')} (${priceUsdc.toFixed(4)} USDC)`
+    : `Pay $${priceUsdc.toFixed(2)} USDC`;
 
   if (!isConnected) {
     return (
@@ -151,7 +160,7 @@ function WalletPayment({
         onClick={handlePay}
         className="w-full py-4 rounded-xl bg-black text-white font-semibold text-lg hover:shadow-lg hover:shadow-black/20 transition-all"
       >
-        Pay ${product.price_usdc.toFixed(2)} USDC
+        {payLabel}
       </button>
       <p className="text-xs text-gray-400 font-light text-center">
         Sends USDC on Polygon via MetaMask / SafePal
@@ -163,16 +172,17 @@ function WalletPayment({
 function CrossmintPayment({
   shop,
   product,
+  priceUsdc,
   language,
 }: {
   shop: Shop;
   product: Product;
+  priceUsdc: number;
   language: 'ja' | 'en';
 }) {
   const apiKey = shop.crossmint_api_key || process.env.NEXT_PUBLIC_CROSSMINT_API_KEY || '';
   const collectionLocator = process.env.NEXT_PUBLIC_CROSSMINT_COLLECTION_LOCATOR || '';
 
-  // "ck" または "sk" で始まる場合のみ有効とみなす
   const isConfigured = /^(ck|sk)/.test(apiKey) && collectionLocator.length > 0;
 
   if (!isConfigured) {
@@ -197,7 +207,7 @@ function CrossmintPayment({
           lineItems={{
             collectionLocator,
             callData: {
-              totalPrice: product.price_usdc.toString(),
+              totalPrice: priceUsdc.toFixed(6),
               recipient: shop.wallet_address,
             },
           }}
@@ -219,14 +229,21 @@ function CrossmintPayment({
 export default function PaymentClient({
   shop,
   product,
+  priceJpy,
+  priceUsdc,
+  rateJpy,
+  rateUpdatedAt,
 }: {
   shop: Shop;
   product: Product;
+  priceJpy: number | null;
+  priceUsdc: number;
+  rateJpy: number | null;
+  rateUpdatedAt: string | null;
 }) {
   const [method, setMethod] = useState<'wallet' | 'crossmint'>('wallet');
   const [isDone, setIsDone] = useState(false);
 
-  // ブラウザ言語を判定（ja → 日本語、それ以外 → 英語）
   const language: 'ja' | 'en' =
     typeof navigator !== 'undefined' && navigator.language.startsWith('ja') ? 'ja' : 'en';
 
@@ -248,7 +265,7 @@ export default function PaymentClient({
         {/* Product Card */}
         <div className="rounded-2xl border border-gray-200 p-6 space-y-3">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
+            <div className="space-y-1 flex-1">
               <h1 className="text-xl font-bold tracking-tight text-gray-900">
                 {product.name}
               </h1>
@@ -258,11 +275,32 @@ export default function PaymentClient({
                 </p>
               )}
             </div>
-            <div className="shrink-0 text-right">
-              <p className="text-2xl font-bold tracking-tight text-gray-900">
-                ${product.price_usdc.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-400 font-light">USDC</p>
+            <div className="shrink-0 text-right space-y-0.5">
+              {priceJpy != null ? (
+                <>
+                  <p className="text-2xl font-bold tracking-tight text-gray-900">
+                    ¥{priceJpy.toLocaleString('ja-JP')}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    ≈ {priceUsdc.toFixed(2)} USDC
+                  </p>
+                  {rateJpy != null && (
+                    <p className="text-xs text-gray-400">
+                      Rate: 1 USDC = ¥{rateJpy.toFixed(2)}
+                      {rateUpdatedAt && (
+                        <span className="ml-1 text-gray-300">({rateUpdatedAt})</span>
+                      )}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold tracking-tight text-gray-900">
+                    ${priceUsdc.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-400 font-light">USDC</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -298,10 +336,17 @@ export default function PaymentClient({
               <WalletPayment
                 shop={shop}
                 product={product}
+                priceUsdc={priceUsdc}
+                priceJpy={priceJpy}
                 onSuccess={() => setIsDone(true)}
               />
             ) : (
-              <CrossmintPayment shop={shop} product={product} language={language} />
+              <CrossmintPayment
+                shop={shop}
+                product={product}
+                priceUsdc={priceUsdc}
+                language={language}
+              />
             )}
           </div>
         </div>
