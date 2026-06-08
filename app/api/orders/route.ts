@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextResponse } from 'next/server';
 
 interface OrderRequestBody {
@@ -24,7 +24,14 @@ export async function POST(request: Request) {
     const merchantAmount = amountUsdc * 0.975;
     const streakFee = amountUsdc * 0.025;
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+
+    // 商品情報を取得（通知用）
+    const { data: product } = await supabase
+      .from('products')
+      .select('name, price_jpy')
+      .eq('id', productId)
+      .single();
 
     const { data, error } = await supabase
       .from('orders')
@@ -45,6 +52,21 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // 決済通知メールを fire-and-forget で送信
+    const baseUrl = new URL(request.url).origin;
+    fetch(`${baseUrl}/api/notify/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        shopId,
+        productName: product?.name ?? '商品',
+        amountJpy: product?.price_jpy ?? null,
+        amountUsdc,
+        paymentMethod,
+        txHash,
+      }),
+    }).catch(() => {});
 
     return NextResponse.json({ order: data }, { status: 201 });
   } catch (error) {

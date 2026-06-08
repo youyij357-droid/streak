@@ -100,6 +100,60 @@ export async function sendAdminNotification({
   });
 }
 
+// ─── ③ 加盟店宛：決済完了通知 ───────────────────────────────
+
+export async function sendPaymentNotification({
+  shopName,
+  toEmail,
+  productName,
+  amountJpy,
+  amountUsdc,
+  paymentMethod,
+  txHash,
+}: {
+  shopName: string;
+  toEmail: string;
+  productName: string;
+  amountJpy: number | null;
+  amountUsdc: number;
+  paymentMethod: string;
+  txHash: string;
+}) {
+  const polygonScanUrl = `https://polygonscan.com/tx/${txHash}`;
+  const paidAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  const methodLabel = paymentMethod === 'wallet' ? 'ウォレット (USDC)' : 'クレジットカード';
+  const amountLabel = amountJpy
+    ? `¥${amountJpy.toLocaleString('ja-JP')}`
+    : `${amountUsdc.toFixed(2)} USDC`;
+
+  const content = `
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#111111;">決済完了</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#555555;">以下の決済が完了しました。</p>
+
+    <table cellpadding="0" cellspacing="0" width="100%"
+      style="border:1px solid #e5e5e5;border-radius:12px;padding:16px 20px;background:#fafafa;">
+      ${infoRow('商品名', productName)}
+      ${infoRow('決済金額', amountLabel)}
+      ${infoRow('USDC', `${amountUsdc.toFixed(6)} USDC`)}
+      ${infoRow('決済方法', methodLabel)}
+      ${infoRow('決済日時', paidAt)}
+      ${infoRow('TXハッシュ', `<span style="font-family:monospace;font-size:11px;">${txHash.slice(0, 16)}...${txHash.slice(-8)}</span>`)}
+    </table>
+
+    <a href="${polygonScanUrl}"
+      style="display:inline-block;margin-top:24px;padding:14px 32px;background:#111111;color:#ffffff;text-decoration:none;border-radius:100px;font-size:14px;font-weight:600;">
+      PolygonScanで確認 →
+    </a>
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: `[Streak] 決済完了 - ${amountLabel}`,
+    html: baseLayout(content),
+  });
+}
+
 // ─── ② 加盟店宛：申込完了自動返信 ───────────────────────────
 
 export async function sendWelcomeEmail({
