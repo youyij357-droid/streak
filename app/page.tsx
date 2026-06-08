@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 type Language = 'EN' | 'JP';
@@ -145,6 +146,12 @@ export default function Home() {
             <a href="#cta" className="text-gray-700 hover:text-gray-900 transition font-medium">
               {t.nav.getStarted}
             </a>
+            <Link
+              href="/login"
+              className="px-5 py-2 rounded-full border border-gray-300 text-gray-900 font-medium hover:bg-black hover:text-white hover:border-black transition-all"
+            >
+              Login →
+            </Link>
             {/* Language Toggle */}
             <div className="flex gap-2 border border-gray-300 rounded-full p-1">
               <button
@@ -201,9 +208,13 @@ export default function Home() {
 
             {/* CTA Button */}
             <div className="pt-4 flex gap-4">
-              <button id="cta" className="px-8 py-4 rounded-full bg-black text-white font-semibold hover:shadow-lg hover:shadow-black/30 transition-all duration-300 text-lg">
+              <Link
+                id="cta"
+                href="/login"
+                className="px-8 py-4 rounded-full bg-black text-white font-semibold hover:shadow-lg hover:shadow-black/30 transition-all duration-300 text-lg"
+              >
                 {t.buttons.getStarted}
-              </button>
+              </Link>
               <button className="px-8 py-4 rounded-full border border-black text-black font-semibold hover:bg-black hover:text-white transition-all duration-300 text-lg">
                 {t.buttons.seeDemo}
               </button>
@@ -315,15 +326,16 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <button
-                  className={`w-full py-3 rounded-full font-semibold transition-all duration-300 ${
+                <Link
+                  href="/login"
+                  className={`block w-full py-3 rounded-full font-semibold text-center transition-all duration-300 ${
                     plan.highlight
                       ? 'bg-white text-black hover:bg-gray-200'
                       : 'border border-black text-black hover:bg-black hover:text-white'
                   }`}
                 >
                   {language === 'EN' ? 'Get Started' : '今すぐ始める'}
-                </button>
+                </Link>
               </div>
             ))}
           </div>
