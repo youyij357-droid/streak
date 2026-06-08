@@ -3,7 +3,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CreditCard } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function DashboardLayout({
   children,
@@ -13,18 +15,34 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [crossmintConfigured, setCrossmintConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const shopId = localStorage.getItem('streak-shop-id');
+    if (!shopId) return;
+
+    const supabase = createClient();
+    supabase
+      .from('shops')
+      .select('crossmint_api_key')
+      .eq('id', shopId)
+      .single()
+      .then(({ data }) => {
+        setCrossmintConfigured(/^(ck|sk)/.test(data?.crossmint_api_key ?? ''));
+      });
+  }, []);
 
   const navItems = [
     { label: 'Overview', href: '/dashboard' },
     { label: 'Products', href: '/dashboard/products' },
     { label: 'Sales', href: '/dashboard/sales' },
+    { label: 'Payment Setup', href: '/dashboard/payment-setup', isPayment: true },
     { label: 'Settings', href: '/dashboard/settings' },
   ];
 
   const handleSignOut = () => {
     localStorage.removeItem('streak-wallet');
     localStorage.removeItem('streak-shop-id');
-    // Cookie を削除（有効期限を過去に設定）
     document.cookie = 'streak-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     router.push('/login');
   };
@@ -53,10 +71,10 @@ export default function DashboardLayout({
           {/* Logo */}
           <div className="mb-12">
             <a href="/">
-              <Image 
-                src="/images/logo.png" 
-                alt="STREAK Logo" 
-                width={120} 
+              <Image
+                src="/images/logo.png"
+                alt="STREAK Logo"
+                width={120}
                 height={40}
                 priority
                 className="h-10 w-auto"
@@ -68,18 +86,30 @@ export default function DashboardLayout({
           <nav className="space-y-2 flex-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
+              const showBadge = item.isPayment && crossmintConfigured === false;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsSidebarOpen(false)}
-                  className={`block px-4 py-3 rounded-lg font-medium transition-colors ${
+                  className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-colors ${
                     isActive
                       ? 'bg-black text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {item.label}
+                  <span className="flex items-center gap-2">
+                    {item.isPayment && (
+                      <CreditCard className="w-4 h-4 shrink-0" />
+                    )}
+                    {item.label}
+                  </span>
+                  {showBadge && (
+                    <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                      !
+                    </span>
+                  )}
                 </Link>
               );
             })}

@@ -81,6 +81,7 @@ export default function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [methodData, setMethodData] = useState<MethodData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [crossmintConfigured, setCrossmintConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -91,13 +92,14 @@ export default function DashboardPage() {
         // Get shop info
         const { data: shopData } = await supabase
           .from('shops')
-          .select('shop_name')
+          .select('shop_name, crossmint_api_key')
           .limit(1)
           .single();
 
         if (shopData?.shop_name) {
           setShopName(shopData.shop_name);
         }
+        setCrossmintConfigured(/^(ck|sk)/.test(shopData?.crossmint_api_key ?? ''));
 
         // Get orders for current month
         const now = new Date();
@@ -239,6 +241,22 @@ export default function DashboardPage() {
           Welcome to your Streak dashboard
         </p>
       </div>
+
+      {/* Crossmint 未設定バナー */}
+      {crossmintConfigured === false && (
+        <div className="flex items-center justify-between rounded-2xl border border-gray-200 px-6 py-4 bg-white gap-4">
+          <p className="text-sm text-gray-700 font-light">
+            <span className="font-semibold text-gray-900">クレカ決済を有効化しませんか？</span>
+            {' '}Crossmint を設定するとカード払い・Apple Pay・Google Pay に対応できます。
+          </p>
+          <a
+            href="/dashboard/payment-setup"
+            className="shrink-0 px-4 py-2 rounded-full bg-black text-white text-xs font-semibold hover:shadow-lg hover:shadow-black/20 transition-all"
+          >
+            設定する →
+          </a>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
