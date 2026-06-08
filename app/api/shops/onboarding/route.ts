@@ -1,19 +1,42 @@
+import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendAdminNotification, sendWelcomeEmail } from '@/lib/email/resend';
+import { sendAdminNotification, sendEmailVerification } from '@/lib/email/resend';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null);
 
-    if (!body?.shopId || !body?.shopName || !body?.walletAddress) {
+    const required = ['shopId', 'shopName', 'walletAddress', 'accountName', 'email', 'phone', 'country'];
+    for (const field of required) {
+      if (!body?.[field]) {
+        return NextResponse.json(
+          { error: `${field} is required` },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!body.agreedTerms || !body.agreedAntisocial) {
       return NextResponse.json(
-        { error: 'shopId, shopName, walletAddress are required' },
+        { error: '利用規約および反社確認への同意が必要です' },
         { status: 400 }
       );
     }
 
-    const { shopId, shopName, walletAddress, email } = body;
+    const {
+      shopId,
+      shopName,
+      walletAddress,
+      accountName,
+      email,
+      phone,
+      country,
+      websiteUrl,
+      businessDescription,
+    } = body;
+
+    const verificationToken = randomUUID();
 
     const supabase = createAdminClient();
 
@@ -22,7 +45,16 @@ export async function POST(request: NextRequest) {
       .update({
         shop_name: shopName,
         wallet_address: walletAddress.toLowerCase(),
-        email: email ?? null,
+        email,
+        account_name: accountName,
+        phone,
+        country,
+        website_url: websiteUrl ?? null,
+        business_description: businessDescription ?? null,
+        agreed_terms: true,
+        agreed_antisocial: true,
+        email_verified: false,
+        verification_token: verificationToken,
         is_published: true,
         updated_at: new Date().toISOString(),
       })
@@ -35,13 +67,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://streak.io';
+    const verifyUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&shopId=${shopId}`;
     const appliedAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://streak.io'}/dashboard`;
 
-    // メール送信（失敗しても登録自体は成功扱い）
     await Promise.allSettled([
       sendAdminNotification({ shopName, walletAddress, email, appliedAt }),
-      email ? sendWelcomeEmail({ shopName, toEmail: email, dashboardUrl }) : Promise.resolve(),
+      sendEmailVerification({ toEmail: email, shopName, verifyUrl }),
     ]);
 
     return NextResponse.json({ success: true });

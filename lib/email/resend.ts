@@ -100,6 +100,40 @@ export async function sendAdminNotification({
   });
 }
 
+// ─── ② メールアドレス確認メール ─────────────────────────────
+
+export async function sendEmailVerification({
+  toEmail,
+  shopName,
+  verifyUrl,
+}: {
+  toEmail: string;
+  shopName: string;
+  verifyUrl: string;
+}) {
+  const content = `
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#111111;">メールアドレスの確認</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#555555;line-height:1.7;">
+      <strong>${shopName}</strong> へのご登録ありがとうございます。<br />
+      以下のボタンをクリックしてメールアドレスを確認してください。<br />
+      このリンクは<strong>24時間</strong>有効です。
+    </p>
+
+    ${blackButton(verifyUrl, 'メールアドレスを確認する →')}
+
+    <p style="margin:24px 0 0;font-size:12px;color:#999999;line-height:1.6;">
+      このメールに心当たりがない場合は無視してください。
+    </p>
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: '【Streak】メールアドレスの確認をお願いします',
+    html: baseLayout(content),
+  });
+}
+
 // ─── ③ 加盟店宛：決済完了通知 ───────────────────────────────
 
 export async function sendPaymentNotification({
@@ -154,7 +188,7 @@ export async function sendPaymentNotification({
   });
 }
 
-// ─── ② 加盟店宛：申込完了自動返信 ───────────────────────────
+// ─── ④ 加盟店宛：申込完了自動返信 ───────────────────────────
 
 export async function sendWelcomeEmail({
   shopName,
