@@ -7,49 +7,44 @@ import { useAccount, useConnect } from 'wagmi';
 
 type Language = 'EN' | 'JP';
 
-const translations = {
-  EN: {
-    heading: 'Connect Your Wallet',
-    subheading: 'Sign up or log in to start accepting payments',
-    wallets: {
-      metamask: 'MetaMask',
-      walletconnect: 'WalletConnect',
-      safepal: 'SafePal',
-    },
-    footer: 'By continuing, you agree to our Terms of Service and Privacy Policy',
-    errors: {
-      walletNotConnected: 'Wallet not found. Please install MetaMask.',
-      walletRejected: 'Wallet connection rejected',
-      authError: 'Authentication failed',
-    },
+type WalletError = {
+  message: string;
+  link?: string;
+  linkLabel?: string;
+} | null;
+
+// ─── ウォレット定義 ──────────────────────────────────────────
+
+const WALLETS = [
+  {
+    key: 'metamask',
+    name: 'MetaMask',
+    subtitle: { EN: 'Browser Extension', JP: 'ブラウザ拡張機能' },
+    type: 'injected' as const,
   },
-  JP: {
-    heading: 'ウォレットを接続',
-    subheading: '決済受け付けを開始するには登録またはログイン',
-    wallets: {
-      metamask: 'MetaMask',
-      walletconnect: 'WalletConnect',
-      safepal: 'SafePal',
-    },
-    footer: '続行すると、利用規約とプライバシーポリシーに同意したものとみなされます',
-    errors: {
-      walletNotConnected: 'ウォレットが見つかりません。MetaMaskをインストールしてください。',
-      walletRejected: 'ウォレット接続がキャンセルされました',
-      authError: '認証に失敗しました',
-    },
+  {
+    key: 'walletconnect',
+    name: 'WalletConnect',
+    subtitle: { EN: 'Scan with QR Code', JP: 'QRコードでスキャン' },
+    type: 'walletConnect' as const,
   },
-};
+  {
+    key: 'safepal',
+    name: 'SafePal',
+    subtitle: { EN: 'Scan with SafePal App', JP: 'SafePalアプリでスキャン' },
+    type: 'walletConnect' as const,
+  },
+];
+
+// ─── LoginInner ──────────────────────────────────────────────
 
 function LoginInner({ language }: { language: Language }) {
   const router = useRouter();
-  const t = translations[language];
-
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
 
   const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [error, setError] = useState('');
-
+  const [error, setError] = useState<WalletError>(null);
   const calledRef = useRef(false);
 
   useEffect(() => {
@@ -61,7 +56,7 @@ function LoginInner({ language }: { language: Language }) {
   const callWalletAuthAPI = async (walletAddr: string) => {
     try {
       setIsAuthLoading(true);
-      setError('');
+      setError(null);
 
       const response = await fetch('/api/auth/wallet', {
         method: 'POST',
@@ -72,7 +67,7 @@ function LoginInner({ language }: { language: Language }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error ?? t.errors.authError);
+        throw new Error(data?.error ?? (language === 'EN' ? 'Authentication failed' : '認証に失敗しました'));
       }
 
       localStorage.setItem('streak-wallet', walletAddr);
@@ -86,35 +81,48 @@ function LoginInner({ language }: { language: Language }) {
         router.push('/dashboard');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.errors.authError);
+      setError({ message: err instanceof Error ? err.message : (language === 'EN' ? 'Authentication failed' : '認証に失敗しました') });
       calledRef.current = false;
     } finally {
       setIsAuthLoading(false);
     }
   };
 
-  const handleWalletButtonClick = (walletName: string) => {
-    setError('');
+  const handleConnect = (walletKey: string, connectorType: 'injected' | 'walletConnect') => {
+    setError(null);
     calledRef.current = false;
 
+    // 接続済みの場合は直接 API を呼ぶ
     if (isConnected && address) {
       calledRef.current = true;
       callWalletAuthAPI(address);
       return;
     }
 
-    const nameMap: Record<string, string[]> = {
-      MetaMask: ['MetaMask', 'Injected'],
-      WalletConnect: ['WalletConnect'],
-      SafePal: ['SafePal', 'Injected'],
-    };
-    const candidates = nameMap[walletName] ?? [walletName];
-    const connector = connectors.find((c) =>
-      candidates.some((n) => c.name.toLowerCase().includes(n.toLowerCase()))
-    );
+    // コネクターを type で検索
+    const connector = connectors.find((c) => {
+      if (connectorType === 'injected') {
+        return c.type === 'injected' || c.name.toLowerCase().includes('metamask');
+      }
+      return c.type === 'walletConnect' || c.name.toLowerCase().includes('walletconnect');
+    });
 
     if (!connector) {
-      setError(t.errors.walletNotConnected);
+      if (walletKey === 'metamask') {
+        setError({
+          message: language === 'EN'
+            ? 'MetaMask is not installed. Please install MetaMask.'
+            : 'MetaMaskをインストールしてください',
+          link: 'https://metamask.io',
+          linkLabel: '→ metamask.io',
+        });
+      } else {
+        setError({
+          message: language === 'EN'
+            ? 'WalletConnect is not configured.'
+            : 'WalletConnectの設定が必要です',
+        });
+      }
       return;
     }
 
@@ -125,19 +133,24 @@ function LoginInner({ language }: { language: Language }) {
 
   return (
     <>
-      <div className="space-y-4 mb-8">
-        {Object.entries(t.wallets).map(([key, name]) => (
+      <div className="space-y-3 mb-8">
+        {WALLETS.map((wallet) => (
           <button
-            key={key}
-            onClick={() => handleWalletButtonClick(name)}
+            key={wallet.key}
+            onClick={() => handleConnect(wallet.key, wallet.type)}
             disabled={isLoading}
             className="w-full py-4 px-6 rounded-2xl border border-gray-300 hover:border-black hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-left font-semibold text-gray-900 flex items-center justify-between group"
           >
-            <span>{name}</span>
+            <span className="flex flex-col gap-0.5">
+              <span>{wallet.name}</span>
+              <span className="text-xs font-normal text-gray-400 group-hover:text-gray-500">
+                {wallet.subtitle[language]}
+              </span>
+            </span>
             {isLoading ? (
-              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
             ) : (
-              <span className="text-gray-400 group-hover:text-gray-900 transition">→</span>
+              <span className="text-gray-400 group-hover:text-gray-900 transition flex-shrink-0">→</span>
             )}
           </button>
         ))}
@@ -150,18 +163,31 @@ function LoginInner({ language }: { language: Language }) {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
-          <p className="text-sm text-red-700 font-medium">エラー</p>
-          <p className="text-xs text-red-600 font-light mt-1 whitespace-pre-wrap">{error}</p>
+        <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
+          <p className="text-sm text-red-600 font-light">{error.message}</p>
+          {error.link && (
+            <a
+              href={error.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm font-semibold text-red-700 underline hover:text-red-900"
+            >
+              {error.linkLabel ?? error.link}
+            </a>
+          )}
         </div>
       )}
 
       <p className="text-xs text-gray-500 font-light leading-relaxed text-center">
-        {t.footer}
+        {language === 'EN'
+          ? 'By continuing, you agree to our Terms of Service and Privacy Policy'
+          : '続行すると、利用規約とプライバシーポリシーに同意したものとみなされます'}
       </p>
     </>
   );
 }
+
+// ─── LoginPage ───────────────────────────────────────────────
 
 export default function LoginPage() {
   const [language, setLanguage] = useState<Language>('EN');
@@ -203,10 +229,12 @@ export default function LoginPage() {
 
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-3">
-            {translations[language].heading}
+            {language === 'EN' ? 'Connect Your Wallet' : 'ウォレットを接続'}
           </h1>
           <p className="text-lg text-gray-600 font-light">
-            {translations[language].subheading}
+            {language === 'EN'
+              ? 'Sign up or log in to start accepting payments'
+              : '決済受け付けを開始するには登録またはログイン'}
           </p>
         </div>
 
