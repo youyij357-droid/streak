@@ -37,7 +37,8 @@ interface Product {
   is_published: boolean;
 }
 
-function ThankYouView({ shopName }: { shopName: string }) {
+function ThankYouView({ shopName, txHash }: { shopName: string; txHash: string }) {
+  const polygonScanUrl = `https://polygonscan.com/tx/${txHash}`;
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center space-y-6">
@@ -55,6 +56,14 @@ function ThankYouView({ shopName }: { shopName: string }) {
             Your transaction has been confirmed on the blockchain.
           </p>
         </div>
+        <a
+          href={polygonScanUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-6 py-3 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:border-black hover:text-black transition"
+        >
+          PolygonScanで確認 →
+        </a>
       </div>
     </div>
   );
@@ -242,13 +251,13 @@ export default function PaymentClient({
   rateUpdatedAt: string | null;
 }) {
   const [method, setMethod] = useState<'wallet' | 'crossmint'>('wallet');
-  const [isDone, setIsDone] = useState(false);
+  const [doneTxHash, setDoneTxHash] = useState<string | null>(null);
 
   const language: 'ja' | 'en' =
     typeof navigator !== 'undefined' && navigator.language.startsWith('ja') ? 'ja' : 'en';
 
-  if (isDone) {
-    return <ThankYouView shopName={shop.shop_name} />;
+  if (doneTxHash) {
+    return <ThankYouView shopName={shop.shop_name} txHash={doneTxHash} />;
   }
 
   return (
@@ -338,7 +347,7 @@ export default function PaymentClient({
                 product={product}
                 priceUsdc={priceUsdc}
                 priceJpy={priceJpy}
-                onSuccess={() => setIsDone(true)}
+                onSuccess={(hash) => setDoneTxHash(hash)}
               />
             ) : (
               <CrossmintPayment

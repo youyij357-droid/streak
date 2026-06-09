@@ -1,3 +1,4 @@
+// ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_token_expires_at timestamptz;
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification, sendEmailVerification } from '@/lib/email/resend';
@@ -10,10 +11,7 @@ export async function POST(request: NextRequest) {
     const required = ['shopId', 'shopName', 'walletAddress', 'accountName', 'email', 'phone', 'country'];
     for (const field of required) {
       if (!body?.[field]) {
-        return NextResponse.json(
-          { error: `${field} is required` },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: `${field} is required` }, { status: 400 });
       }
     }
 
@@ -22,6 +20,12 @@ export async function POST(request: NextRequest) {
         { error: '利用規約および反社確認への同意が必要です' },
         { status: 400 }
       );
+    }
+
+    // streak-session cookie と shopId を照合
+    const sessionShopId = request.cookies.get('streak-session')?.value;
+    if (!sessionShopId || sessionShopId !== body.shopId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const {
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const verificationToken = randomUUID();
+    const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     const supabase = createAdminClient();
 
@@ -55,6 +60,7 @@ export async function POST(request: NextRequest) {
         agreed_antisocial: true,
         email_verified: false,
         verification_token: verificationToken,
+        verification_token_expires_at: verificationTokenExpiresAt,
         is_published: true,
         updated_at: new Date().toISOString(),
       })

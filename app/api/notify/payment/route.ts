@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!shop?.email) {
-      return NextResponse.json({ skipped: 'no email configured' });
+      return new NextResponse(null, { status: 204 });
     }
 
     await sendPaymentNotification({

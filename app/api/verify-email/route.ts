@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   const { data: shop, error } = await supabase
     .from('shops')
-    .select('id')
+    .select('id, verification_token_expires_at')
     .eq('id', shopId)
     .eq('verification_token', token)
     .single();
@@ -25,11 +25,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/email-verified?error=invalid', baseUrl));
   }
 
+  // 有効期限チェック（24時間）
+  if (
+    !shop.verification_token_expires_at ||
+    new Date(shop.verification_token_expires_at) < new Date()
+  ) {
+    return NextResponse.redirect(new URL('/email-verified?error=expired', baseUrl));
+  }
+
   await supabase
     .from('shops')
     .update({
       email_verified: true,
       verification_token: null,
+      verification_token_expires_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', shopId);

@@ -6,13 +6,14 @@ export default async function EmailVerifiedPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
-  const isError = params.error === 'invalid';
+  const errorType = params.error; // 'invalid' | 'expired' | undefined
+  const isError = !!errorType;
+  const isExpired = errorType === 'expired';
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-6">
       <div className="w-full max-w-sm text-center space-y-8">
 
-        {/* アイコン */}
         <div className="flex justify-center">
           <div
             className={`w-20 h-20 rounded-full flex items-center justify-center ${
@@ -31,19 +32,19 @@ export default async function EmailVerifiedPage({
           </div>
         </div>
 
-        {/* テキスト */}
         <div className="space-y-3">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            {isError ? 'リンクが無効です' : 'メール認証完了'}
+            {isExpired ? 'リンクの有効期限切れ' : isError ? 'リンクが無効です' : 'メール認証完了'}
           </h1>
-          <p className="text-gray-500 font-light leading-relaxed">
-            {isError
-              ? 'このリンクは期限切れまたは無効です。\nオンボーディングからやり直してください。'
+          <p className="text-gray-500 font-light leading-relaxed whitespace-pre-line">
+            {isExpired
+              ? 'このリンクの有効期限（24時間）が切れています。\nダッシュボードの設定画面から認証メールを再送してください。'
+              : isError
+              ? 'このリンクは無効です。\n設定画面から認証メールを再送してください。'
               : 'メールアドレスの確認が完了しました。\nダッシュボードからショップ設定を続けてください。'}
           </p>
         </div>
 
-        {/* ボタン */}
         <Link
           href="/dashboard"
           className="inline-block px-10 py-4 rounded-full bg-black text-white font-semibold hover:shadow-lg hover:shadow-black/20 transition-all"

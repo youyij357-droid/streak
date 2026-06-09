@@ -160,12 +160,12 @@ export default function PaymentSetupPage() {
                   <p className="text-sm font-semibold text-gray-900">アカウント作成</p>
                   <p className="text-sm text-gray-500 font-light mt-0.5 leading-relaxed">
                     <a
-                      href="https://staging.crossmint.com/console"
+                      href="https://www.crossmint.com/console"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline text-gray-900 font-medium"
                     >
-                      staging.crossmint.com/console
+                      www.crossmint.com/console
                     </a>
                     {' '}でアカウントを作成してください。
                   </p>

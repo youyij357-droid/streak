@@ -9,7 +9,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'shopId is required' }, { status: 400 });
     }
 
-    const { shopId, email, crossmintApiKey } = body;
+    // streak-session cookie と shopId を照合
+    const sessionShopId = request.cookies.get('streak-session')?.value;
+    if (!sessionShopId || sessionShopId !== body.shopId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { shopId, email, crossmintApiKey, accountName, phone, country } = body;
 
     const supabase = createAdminClient();
 
@@ -18,6 +24,9 @@ export async function PUT(request: NextRequest) {
     };
     if (email !== undefined) updates.email = email || null;
     if (crossmintApiKey !== undefined) updates.crossmint_api_key = crossmintApiKey || null;
+    if (accountName !== undefined) updates.account_name = accountName || null;
+    if (phone !== undefined) updates.phone = phone || null;
+    if (country !== undefined) updates.country = country || null;
 
     const { error } = await supabase
       .from('shops')
