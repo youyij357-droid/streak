@@ -23,16 +23,10 @@ const WALLETS = [
     type: 'injected' as const,
   },
   {
-    key: 'walletconnect',
-    name: 'WalletConnect',
-    subtitle: { EN: 'Scan with QR Code', JP: 'QRコードでスキャン' },
-    type: 'walletConnect' as const,
-  },
-  {
     key: 'safepal',
     name: 'SafePal',
-    subtitle: { EN: 'Scan with SafePal App', JP: 'SafePalアプリでスキャン' },
-    type: 'walletConnect' as const,
+    subtitle: { EN: 'SafePal App / Extension', JP: 'SafePalアプリ・拡張機能' },
+    type: 'injected' as const,
   },
 ];
 
@@ -88,7 +82,7 @@ function LoginInner({ language }: { language: Language }) {
     }
   };
 
-  const handleConnect = (walletKey: string, connectorType: 'injected' | 'walletConnect') => {
+  const handleConnect = (walletKey: string) => {
     setError(null);
     calledRef.current = false;
 
@@ -99,28 +93,25 @@ function LoginInner({ language }: { language: Language }) {
       return;
     }
 
-    // コネクターを type で検索
-    const connector = connectors.find((c) => {
-      if (connectorType === 'injected') {
-        return c.type === 'injected' || c.name.toLowerCase().includes('metamask');
-      }
-      return c.type === 'walletConnect' || c.name.toLowerCase().includes('walletconnect');
-    });
+    // Injectedコネクターを検索（MetaMask・SafePal共通）
+    const connector = connectors.find((c) => c.type === 'injected');
 
     if (!connector) {
-      if (walletKey === 'metamask') {
+      if (walletKey === 'safepal') {
+        setError({
+          message: language === 'EN'
+            ? 'SafePal is not installed. Please install SafePal.'
+            : 'SafePalをインストールしてください',
+          link: 'https://safepal.io',
+          linkLabel: '→ safepal.io',
+        });
+      } else {
         setError({
           message: language === 'EN'
             ? 'MetaMask is not installed. Please install MetaMask.'
             : 'MetaMaskをインストールしてください',
           link: 'https://metamask.io',
           linkLabel: '→ metamask.io',
-        });
-      } else {
-        setError({
-          message: language === 'EN'
-            ? 'WalletConnect is not configured.'
-            : 'WalletConnectの設定が必要です',
         });
       }
       return;
@@ -137,7 +128,7 @@ function LoginInner({ language }: { language: Language }) {
         {WALLETS.map((wallet) => (
           <button
             key={wallet.key}
-            onClick={() => handleConnect(wallet.key, wallet.type)}
+            onClick={() => handleConnect(wallet.key)}
             disabled={isLoading}
             className="w-full py-4 px-6 rounded-2xl border border-gray-300 hover:border-black hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-left font-semibold text-gray-900 flex items-center justify-between group"
           >
