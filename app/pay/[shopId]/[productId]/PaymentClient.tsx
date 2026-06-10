@@ -5,18 +5,37 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { CrossmintProvider, CrossmintHostedCheckout } from '@crossmint/client-sdk-react-ui';
 
-const USDC_POLYGON = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' as const;
+const USDC_POLYGON = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
+  '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359') as `0x${string}`;
 
-const ERC20_TRANSFER_ABI = [
+const STREAK_CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ??
+  '0x78E11bf03f113526fd48c661811Bca1c23bC4F15') as `0x${string}`;
+
+// USDC.approve(spender, amount)
+const ERC20_APPROVE_ABI = [
   {
-    name: 'transfer',
+    name: 'approve',
     type: 'function',
     stateMutability: 'nonpayable',
     inputs: [
-      { name: 'to', type: 'address' },
+      { name: 'spender', type: 'address' },
       { name: 'amount', type: 'uint256' },
     ],
     outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
+
+// StreakPayment.pay(merchant, totalPrice) → 97.5% / 2.5% 自動分配
+const STREAK_PAYMENT_ABI = [
+  {
+    name: 'pay',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'merchant', type: 'address' },
+      { name: 'totalPrice', type: 'uint256' },
+    ],
+    outputs: [],
   },
 ] as const;
 
@@ -37,6 +56,8 @@ interface Product {
   is_published: boolean;
 }
 
+// ─── 決済完了画面 ────────────────────────────────────────────
+
 function ThankYouView({ shopName, txHash }: { shopName: string; txHash: string }) {
   const polygonScanUrl = `https://polygonscan.com/tx/${txHash}`;
   return (
@@ -50,7 +71,8 @@ function ThankYouView({ shopName, txHash }: { shopName: string; txHash: string }
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Payment Complete</h1>
           <p className="text-gray-500 font-light mt-2">
-            Thank you for your purchase from <span className="text-gray-900 font-medium">{shopName}</span>.
+            Thank you for your purchase from{' '}
+            <span className="text-gray-900 font-medium">{shopName}</span>.
           </p>
           <p className="text-gray-400 font-light text-sm mt-1">
             Your transaction has been confirmed on the blockchain.
@@ -69,6 +91,8 @@ function ThankYouView({ shopName, txHash }: { shopName: string; txHash: string }
   );
 }
 
+// ─── ウォレット決済（approve → pay 2ステップ）──────────────
+
 function WalletPayment({
   shop,
   product,
@@ -83,20 +107,69 @@ function WalletPayment({
   onSuccess: (txHash: string) => void;
 }) {
   const { isConnected } = useAccount();
+  const payTriggered = useRef(false);
   const orderSaved = useRef(false);
+  const [error, setError] = useState('');
 
-  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
+  const amount = BigInt(Math.round(priceUsdc * 1_000_000));
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
+  // ── Step 1: USDC approve ──────────────────────────────────
+  const {
+    writeContract: approveWrite,
+    data: approveTxHash,
+    isPending: isApprovePending,
+    error: approveError,
+  } = useWriteContract();
 
+  const { isLoading: isApproveConfirming, isSuccess: isApproveConfirmed } =
+    useWaitForTransactionReceipt({ hash: approveTxHash });
+
+  // ── Step 2: StreakPayment.pay() ───────────────────────────
+  const {
+    writeContract: payWrite,
+    data: payTxHash,
+    isPending: isPayPending,
+    error: payError,
+  } = useWriteContract();
+
+  const { isLoading: isPayConfirming, isSuccess: isPayConfirmed } =
+    useWaitForTransactionReceipt({ hash: payTxHash });
+
+  // approve 確認済み → pay() を自動発火
   useEffect(() => {
-    if (isConfirmed && txHash && !orderSaved.current) {
-      orderSaved.current = true;
-      saveOrderAndNotify(txHash);
+    if (isApproveConfirmed && !payTriggered.current) {
+      payTriggered.current = true;
+      payWrite({
+        address: STREAK_CONTRACT,
+        abi: STREAK_PAYMENT_ABI,
+        functionName: 'pay',
+        args: [shop.wallet_address as `0x${string}`, amount],
+      });
     }
-  }, [isConfirmed, txHash]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isApproveConfirmed]);
+
+  // pay 確認済み → 注文保存 → 完了画面
+  useEffect(() => {
+    if (isPayConfirmed && payTxHash && !orderSaved.current) {
+      orderSaved.current = true;
+      saveOrderAndNotify(payTxHash);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPayConfirmed, payTxHash]);
+
+  // approve エラー
+  useEffect(() => {
+    if (approveError) setError(approveError.message.split('\n')[0]);
+  }, [approveError]);
+
+  // pay エラー
+  useEffect(() => {
+    if (payError) {
+      setError(payError.message.split('\n')[0]);
+      payTriggered.current = false;
+    }
+  }, [payError]);
 
   const saveOrderAndNotify = async (hash: string) => {
     try {
@@ -118,19 +191,29 @@ function WalletPayment({
   };
 
   const handlePay = () => {
-    const amount = BigInt(Math.round(priceUsdc * 1_000_000));
-    writeContract({
+    setError('');
+    payTriggered.current = false;
+    orderSaved.current = false;
+    approveWrite({
       address: USDC_POLYGON,
-      abi: ERC20_TRANSFER_ABI,
-      functionName: 'transfer',
-      args: [shop.wallet_address as `0x${string}`, amount],
+      abi: ERC20_APPROVE_ABI,
+      functionName: 'approve',
+      args: [STREAK_CONTRACT, amount],
     });
   };
 
-  const payLabel = priceJpy
-    ? `Pay ¥${priceJpy.toLocaleString('ja-JP')} (${priceUsdc.toFixed(4)} USDC)`
-    : `Pay $${priceUsdc.toFixed(2)} USDC`;
+  // ── 状態の集約 ────────────────────────────────────────────
+  const isApproving = isApprovePending || isApproveConfirming;
+  const isPaying = isPayPending || isPayConfirming;
+  const isBusy = isApproving || isPaying;
 
+  let stepLabel = '';
+  if (isApprovePending)    stepLabel = 'ウォレットでUSDCの承認を確認してください';
+  else if (isApproveConfirming) stepLabel = 'USDCの承認を確認中...';
+  else if (isPayPending)   stepLabel = 'ウォレットで決済を確認してください';
+  else if (isPayConfirming) stepLabel = '決済を処理中...';
+
+  // ── ウォレット未接続 ──────────────────────────────────────
   if (!isConnected) {
     return (
       <div className="space-y-4">
@@ -144,26 +227,72 @@ function WalletPayment({
     );
   }
 
-  if (isPending || isConfirming) {
+  // ── ローディング（2ステップ表示）─────────────────────────
+  if (isBusy) {
     return (
-      <div className="space-y-3 text-center">
+      <div className="space-y-6 text-center py-2">
         <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-600 font-light">
-          {isPending ? 'Confirm in your wallet…' : 'Waiting for blockchain confirmation…'}
-        </p>
-        {txHash && (
-          <p className="text-xs text-gray-400 font-mono break-all">{txHash}</p>
+
+        <div className="space-y-3 max-w-xs mx-auto">
+          {/* Step 1 */}
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                isApproveConfirmed
+                  ? 'bg-green-500 text-white'
+                  : isApproving
+                  ? 'bg-black text-white'
+                  : 'bg-gray-200 text-gray-400'
+              }`}
+            >
+              {isApproveConfirmed ? (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : '1'}
+            </div>
+            <p className={`text-sm text-left ${
+              isApproveConfirmed ? 'text-gray-400 line-through' : isApproving ? 'text-gray-900 font-medium' : 'text-gray-400'
+            }`}>
+              Step 1/2: USDCの承認
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                isPaying ? 'bg-black text-white' : 'bg-gray-200 text-gray-400'
+              }`}
+            >
+              2
+            </div>
+            <p className={`text-sm text-left ${isPaying ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+              Step 2/2: 決済処理
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-400 font-light">{stepLabel}</p>
+
+        {(payTxHash ?? approveTxHash) && (
+          <p className="text-xs text-gray-300 font-mono break-all">
+            {payTxHash ?? approveTxHash}
+          </p>
         )}
       </div>
     );
   }
 
+  // ── 決済ボタン ────────────────────────────────────────────
+  const payLabel = priceJpy
+    ? `Pay ¥${priceJpy.toLocaleString('ja-JP')} (${priceUsdc.toFixed(4)} USDC)`
+    : `Pay ${priceUsdc.toFixed(2)} USDC`;
+
   return (
     <div className="space-y-4">
-      {writeError && (
-        <p className="text-sm text-red-500 text-center font-light">
-          {writeError.message.split('\n')[0]}
-        </p>
+      {error && (
+        <p className="text-sm text-red-500 text-center font-light">{error}</p>
       )}
       <button
         onClick={handlePay}
@@ -172,11 +301,13 @@ function WalletPayment({
         {payLabel}
       </button>
       <p className="text-xs text-gray-400 font-light text-center">
-        Sends USDC on Polygon via MetaMask / SafePal
+        Powered by StreakPayment · 2.5% fee settled on-chain
       </p>
     </div>
   );
 }
+
+// ─── クレカ / Apple / Google Pay ─────────────────────────────
 
 function CrossmintPayment({
   shop,
@@ -235,6 +366,8 @@ function CrossmintPayment({
   );
 }
 
+// ─── メインコンポーネント ─────────────────────────────────────
+
 export default function PaymentClient({
   shop,
   product,
@@ -290,9 +423,7 @@ export default function PaymentClient({
                   <p className="text-2xl font-bold tracking-tight text-gray-900">
                     ¥{priceJpy.toLocaleString('ja-JP')}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    ≈ {priceUsdc.toFixed(2)} USDC
-                  </p>
+                  <p className="text-sm text-gray-500">≈ {priceUsdc.toFixed(2)} USDC</p>
                   {rateJpy != null && (
                     <p className="text-xs text-gray-400">
                       Rate: 1 USDC = ¥{rateJpy.toFixed(2)}
@@ -320,9 +451,7 @@ export default function PaymentClient({
             <button
               onClick={() => setMethod('wallet')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                method === 'wallet'
-                  ? 'bg-black text-white'
-                  : 'text-gray-600 hover:text-gray-900'
+                method === 'wallet' ? 'bg-black text-white' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Wallet
@@ -330,16 +459,13 @@ export default function PaymentClient({
             <button
               onClick={() => setMethod('crossmint')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                method === 'crossmint'
-                  ? 'bg-black text-white'
-                  : 'text-gray-600 hover:text-gray-900'
+                method === 'crossmint' ? 'bg-black text-white' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Card / Apple / Google Pay
             </button>
           </div>
 
-          {/* Payment Form */}
           <div className="py-2">
             {method === 'wallet' ? (
               <WalletPayment
