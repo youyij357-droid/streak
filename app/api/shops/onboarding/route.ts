@@ -1,4 +1,5 @@
 // ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_token_expires_at timestamptz;
+// ALTER TABLE shops ADD CONSTRAINT shops_email_unique UNIQUE (email);
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification, sendEmailVerification } from '@/lib/email/resend';
@@ -40,10 +41,42 @@ export async function POST(request: NextRequest) {
       businessDescription,
     } = body;
 
+    const supabase = createAdminClient();
+
+    // 同じemailが別のshopで既に登録済みでないか確認
+    const { data: existingEmail } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('email', email)
+      .neq('id', shopId)
+      .not('shop_name', 'is', null)
+      .single();
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: 'このメールアドレスは既に登録されています' },
+        { status: 409 }
+      );
+    }
+
+    // 同じwallet_addressが別のshopで既に完了登録済みでないか確認
+    const { data: existingWallet } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('wallet_address', walletAddress.toLowerCase())
+      .neq('id', shopId)
+      .not('shop_name', 'is', null)
+      .single();
+
+    if (existingWallet) {
+      return NextResponse.json(
+        { error: 'このウォレットアドレスは既に登録されています' },
+        { status: 409 }
+      );
+    }
+
     const verificationToken = randomUUID();
     const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from('shops')

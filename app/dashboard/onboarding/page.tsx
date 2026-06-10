@@ -92,6 +92,10 @@ function OnboardingContent() {
       const result = await response.json();
 
       if (!response.ok) {
+        // 409: 重複登録エラーはそのままメッセージを表示
+        if (response.status === 409) {
+          throw new Error(result.error);
+        }
         throw new Error(result.detail ?? result.error ?? 'ショップの作成に失敗しました');
       }
 
