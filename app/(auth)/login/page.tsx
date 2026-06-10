@@ -93,8 +93,39 @@ function LoginInner({ language }: { language: Language }) {
       return;
     }
 
-    // Injectedコネクターを検索（MetaMask・SafePal共通）
-    const connector = connectors.find((c) => c.type === 'injected');
+    // ウォレットが一切検出されない場合
+    if (connectors.length === 0) {
+      setError({
+        message: language === 'EN'
+          ? 'No wallet detected. Make sure MetaMask is installed and unlocked.'
+          : 'ウォレットが検出されませんでした。MetaMaskがロック解除されているか確認してください。',
+        link: 'https://metamask.io',
+        linkLabel: '→ metamask.io',
+      });
+      return;
+    }
+
+    let connector;
+
+    if (walletKey === 'safepal') {
+      // SafePal: 名前・IDで優先検索、なければ injected にフォールバック
+      connector = connectors.find((c) =>
+        c.name.toLowerCase().includes('safepal') ||
+        c.id.toLowerCase().includes('safepal')
+      ) ?? connectors.find((c) =>
+        c.type === 'injected' ||
+        c.id === 'injected'
+      );
+    } else {
+      // MetaMask: 名前・IDで優先検索、なければ injected にフォールバック
+      connector = connectors.find((c) =>
+        c.name.toLowerCase().includes('metamask') ||
+        c.id.toLowerCase().includes('metamask')
+      ) ?? connectors.find((c) =>
+        c.type === 'injected' ||
+        c.id === 'injected'
+      );
+    }
 
     if (!connector) {
       if (walletKey === 'safepal') {
