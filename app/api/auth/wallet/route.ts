@@ -1,61 +1,40 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createAdminClient } from '@/lib/supabase/admin';
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { walletAddress } = await request.json()
+    const { walletAddress } = await request.json();
 
     if (!walletAddress) {
       return NextResponse.json(
         { error: 'Wallet address is required' },
         { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+      .from('shops')
+      .upsert(
+        { wallet_address: walletAddress.toLowerCase() },
+        { onConflict: 'wallet_address', ignoreDuplicates: true }
       )
-    }
-
-    // 既存のショップを検索
-    const { data: existingShop } = await supabaseAdmin
-      .from('shops')
-      .select('id')
-      .eq('wallet_address', walletAddress)
-      .single()
-
-    if (existingShop) {
-      return NextResponse.json({
-        success: true,
-        isNewUser: false,
-        shopId: existingShop.id
-      })
-    }
-
-    // 新規ショップを作成
-    const { data: newShop, error } = await supabaseAdmin
-      .from('shops')
-      .insert({ wallet_address: walletAddress })
-      .select('id')
-      .single()
+      .select('id, shop_name')
+      .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    const isNewUser = !data.shop_name;
 
     return NextResponse.json({
       success: true,
-      isNewUser: true,
-      shopId: newShop.id
-    })
-
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+      isNewUser,
+      shopId: data.id,
+    });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
