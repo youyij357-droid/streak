@@ -1,11 +1,15 @@
 import type { NextConfig } from "next";
 
-const CSP = [
-  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' https://*.privy.io https://*.privy.systems https://*.walletconnect.com https://*.walletconnect.org https://*.web3modal.org",
-  "worker-src 'self' blob:",
-  "frame-src 'self' https://*.privy.io https://*.privy.systems https://*.walletconnect.com https://*.walletconnect.org",
-  "connect-src 'self' https://*.privy.io https://*.privy.systems https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://*.web3modal.org https://polygon-mainnet.g.alchemy.com https://polygon-rpc.com",
-].join('; ');
+const cspHeader = `
+  default-src 'self';
+  script-src 'self' 'unsafe-eval' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' blob: data: https:;
+  font-src 'self';
+  connect-src 'self' https: wss:;
+  frame-src 'self' https:;
+  worker-src 'self' blob:;
+`;
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -16,7 +20,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: CSP,
+            value: cspHeader.replace(/\n/g, ' ').trim(),
           },
         ],
       },
