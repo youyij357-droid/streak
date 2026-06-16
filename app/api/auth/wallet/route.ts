@@ -31,26 +31,42 @@ export async function POST(request: Request) {
     }
 
     const supabase = createAdminClient();
+    const normalizedAddress = walletAddress.toLowerCase();
 
-    const { data, error } = await supabase
+    // Step1: 既存レコードを検索
+    const { data: existing, error: selectError } = await supabase
       .from('shops')
-      .upsert(
-        { wallet_address: walletAddress.toLowerCase() },
-        { onConflict: 'wallet_address', ignoreDuplicates: true }
-      )
+      .select('id, shop_name')
+      .eq('wallet_address', normalizedAddress)
+      .maybeSingle();
+
+    if (selectError) {
+      return NextResponse.json({ error: selectError.message }, { status: 500 });
+    }
+
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        isNewUser: !existing.shop_name,
+        shopId: existing.id,
+      });
+    }
+
+    // Step2: 存在しない場合のみINSERT
+    const { data: newShop, error: insertError } = await supabase
+      .from('shops')
+      .insert({ wallet_address: normalizedAddress })
       .select('id, shop_name')
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
-
-    const isNewUser = !data.shop_name;
 
     return NextResponse.json({
       success: true,
-      isNewUser,
-      shopId: data.id,
+      isNewUser: !newShop.shop_name,
+      shopId: newShop.id,
     });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
