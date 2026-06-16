@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id,CPU,StartTime\")"
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id,CPU,StartTime\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Sort-Object CPU -Descending | Select-Object Id,CPU,StartTime -First 5\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Sort-Object CPU -Descending | Select-Object Id,CPU,StartTime -First 8\")"
     ]
   }
 }

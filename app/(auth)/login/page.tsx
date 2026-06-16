@@ -39,13 +39,11 @@ function LoginInner({ language }: { language: Language }) {
 
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [error, setError] = useState<WalletError>(null);
-  const calledRef = useRef(false);
-
-  useEffect(() => {
-    if (!isConnected || !address || calledRef.current) return;
-    calledRef.current = true;
-    callWalletAuthAPI(address);
-  }, [isConnected, address]);
+  // bool ではなく address 単位で「呼び出し済みか」を追跡する。
+  // bool だと address が途中で変わった場合（再接続直後の一時値→確定値など）に
+  // 二度目以降の呼び出しがブロックされたままになり、isConnected/address が
+  // 揃っているのに遷移しない不具合の原因になっていた。
+  const calledForRef = useRef<string | null>(null);
 
   const callWalletAuthAPI = async (walletAddr: string) => {
     try {
@@ -59,6 +57,7 @@ function LoginInner({ language }: { language: Language }) {
       });
 
       const data = await response.json();
+      console.log('[login] /api/auth/wallet response', { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data?.error ?? (language === 'EN' ? 'Authentication failed' : '認証に失敗しました'));
@@ -75,23 +74,34 @@ function LoginInner({ language }: { language: Language }) {
         router.push('/dashboard');
       }
     } catch (err) {
+      console.error('[login] callWalletAuthAPI failed', err);
       setError({ message: err instanceof Error ? err.message : (language === 'EN' ? 'Authentication failed' : '認証に失敗しました') });
-      calledRef.current = false;
+      calledForRef.current = null;
     } finally {
       setIsAuthLoading(false);
     }
   };
 
+  useEffect(() => {
+    console.log('[login] wallet state changed', { isConnected, address, calledFor: calledForRef.current });
+    if (!isConnected || !address) return;
+    if (calledForRef.current === address) return;
+    calledForRef.current = address;
+    callWalletAuthAPI(address);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address]);
+
   const handleConnect = (walletKey: string) => {
     setError(null);
-    calledRef.current = false;
 
     // 接続済みの場合は直接 API を呼ぶ
     if (isConnected && address) {
-      calledRef.current = true;
+      calledForRef.current = address;
       callWalletAuthAPI(address);
       return;
     }
+
+    calledForRef.current = null;
 
     // ウォレットが一切検出されない場合
     if (connectors.length === 0) {
