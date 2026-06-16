@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { usePrivy } from '@privy-io/react-auth';
+import { usePrivyReady } from '@/app/providers';
 import { CrossmintProvider, CrossmintHostedCheckout } from '@crossmint/client-sdk-react-ui';
 
 const USDC_POLYGON = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
@@ -106,7 +108,6 @@ function WalletPayment({
   priceJpy: number | null;
   onSuccess: (txHash: string) => void;
 }) {
-  const { isConnected } = useAccount();
   const payTriggered = useRef(false);
   const orderSaved = useRef(false);
   const [error, setError] = useState('');
@@ -212,20 +213,6 @@ function WalletPayment({
   else if (isApproveConfirming) stepLabel = 'USDCの承認を確認中...';
   else if (isPayPending)   stepLabel = 'ウォレットで決済を確認してください';
   else if (isPayConfirming) stepLabel = '決済を処理中...';
-
-  // ── ウォレット未接続 ──────────────────────────────────────
-  if (!isConnected) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-gray-500 font-light text-center">
-          Connect your wallet to pay with USDC on Polygon
-        </p>
-        <div className="flex justify-center">
-          <ConnectButton />
-        </div>
-      </div>
-    );
-  }
 
   // ── ローディング（2ステップ表示）─────────────────────────
   if (isBusy) {
@@ -366,9 +353,170 @@ function CrossmintPayment({
   );
 }
 
+// ─── ウォレット接続オプション ─────────────────────────────────
+
+function WalletConnectOptions({
+  shopId,
+  productId,
+  language,
+  onPrivyLogin,
+}: {
+  shopId: string;
+  productId: string;
+  language: 'ja' | 'en';
+  onPrivyLogin?: () => void;
+}) {
+  const metamaskDeepLink = `https://metamask.app.link/dapp/streak-kohl.vercel.app/pay/${shopId}/${productId}`;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500 font-light text-center">
+        {language === 'ja'
+          ? 'Polygon上のUSDCでお支払いください'
+          : 'Pay with USDC on Polygon'}
+      </p>
+
+      {onPrivyLogin && (
+        <button
+          type="button"
+          onClick={onPrivyLogin}
+          className="w-full py-4 rounded-xl bg-black text-white font-semibold text-base hover:shadow-lg hover:shadow-black/20 transition-all"
+        >
+          {language === 'ja' ? 'メール・Googleでログイン' : 'Sign in with Email / Google'}
+        </button>
+      )}
+
+      <div className="space-y-2">
+        <p className="text-xs text-gray-400 font-light text-center">
+          {language === 'ja' ? 'または MetaMask で接続' : 'Or connect with MetaMask'}
+        </p>
+        <div className="flex justify-center">
+          <ConnectButton />
+        </div>
+      </div>
+
+      <a
+        href={metamaskDeepLink}
+        className="block w-full py-4 rounded-xl border-2 border-black text-black font-semibold text-base text-center hover:bg-gray-50 transition-all"
+      >
+        {language === 'ja' ? 'MetaMaskアプリ（スマホ）' : 'MetaMask App (Mobile)'}
+      </a>
+    </div>
+  );
+}
+
+// ─── ウォレット接続（Privy対応）─────────────────────────────────
+
+function PrivyWalletConnect({
+  shop,
+  product,
+  shopId,
+  productId,
+  priceUsdc,
+  priceJpy,
+  language,
+  onSuccess,
+}: {
+  shop: Shop;
+  product: Product;
+  shopId: string;
+  productId: string;
+  priceUsdc: number;
+  priceJpy: number | null;
+  language: 'ja' | 'en';
+  onSuccess: (txHash: string) => void;
+}) {
+  const { login, authenticated, user } = usePrivy();
+  const { isConnected } = useAccount();
+
+  const hasPrivyWallet = authenticated && !!user?.wallet?.address;
+  const isWalletReady = hasPrivyWallet || isConnected;
+
+  if (isWalletReady) {
+    return (
+      <WalletPayment
+        shop={shop}
+        product={product}
+        priceUsdc={priceUsdc}
+        priceJpy={priceJpy}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
+  return (
+    <WalletConnectOptions
+      shopId={shopId}
+      productId={productId}
+      language={language}
+      onPrivyLogin={login}
+    />
+  );
+}
+
+function WalletConnectSection({
+  shop,
+  product,
+  shopId,
+  productId,
+  priceUsdc,
+  priceJpy,
+  language,
+  onSuccess,
+}: {
+  shop: Shop;
+  product: Product;
+  shopId: string;
+  productId: string;
+  priceUsdc: number;
+  priceJpy: number | null;
+  language: 'ja' | 'en';
+  onSuccess: (txHash: string) => void;
+}) {
+  const privyReady = usePrivyReady();
+  const { isConnected } = useAccount();
+
+  if (privyReady) {
+    return (
+      <PrivyWalletConnect
+        shop={shop}
+        product={product}
+        shopId={shopId}
+        productId={productId}
+        priceUsdc={priceUsdc}
+        priceJpy={priceJpy}
+        language={language}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <WalletPayment
+        shop={shop}
+        product={product}
+        priceUsdc={priceUsdc}
+        priceJpy={priceJpy}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
+  return (
+    <WalletConnectOptions
+      shopId={shopId}
+      productId={productId}
+      language={language}
+    />
+  );
+}
+
 // ─── メインコンポーネント ─────────────────────────────────────
 
 export default function PaymentClient({
+  shopId,
+  productId,
   shop,
   product,
   priceJpy,
@@ -376,6 +524,8 @@ export default function PaymentClient({
   rateJpy,
   rateUpdatedAt,
 }: {
+  shopId: string;
+  productId: string;
   shop: Shop;
   product: Product;
   priceJpy: number | null;
@@ -468,11 +618,14 @@ export default function PaymentClient({
 
           <div className="py-2">
             {method === 'wallet' ? (
-              <WalletPayment
+              <WalletConnectSection
                 shop={shop}
                 product={product}
+                shopId={shopId}
+                productId={productId}
                 priceUsdc={priceUsdc}
                 priceJpy={priceJpy}
+                language={language}
                 onSuccess={(hash) => setDoneTxHash(hash)}
               />
             ) : (

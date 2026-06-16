@@ -67,6 +67,8 @@ export default async function PaymentPage({
 
   return (
     <PaymentClient
+      shopId={shopId}
+      productId={productId}
       shop={shop}
       product={product}
       priceJpy={product.price_jpy}
