@@ -1,11 +1,17 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
-import { CreditCard } from 'lucide-react';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+
+const navItems = [
+  { label: '概要', href: '/dashboard' },
+  { label: '商品', href: '/dashboard/products' },
+  { label: '注文', href: '/dashboard/orders' },
+  { label: '決済履歴', href: '/dashboard/payments' },
+  { label: '設定', href: '/dashboard/settings' },
+];
 
 export default function DashboardLayout({
   children,
@@ -15,120 +21,66 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [crossmintConfigured, setCrossmintConfigured] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const shopId = localStorage.getItem('streak-shop-id');
-    if (!shopId) return;
-
+  async function handleSignOut() {
     const supabase = createClient();
-    supabase
-      .from('shops')
-      .select('crossmint_api_key')
-      .eq('id', shopId)
-      .single()
-      .then(({ data }) => {
-        setCrossmintConfigured(/^(ck|sk)/.test(data?.crossmint_api_key ?? ''));
-      });
-  }, []);
-
-  const navItems = [
-    { label: 'Overview', href: '/dashboard' },
-    { label: 'Products', href: '/dashboard/products' },
-    { label: 'Sales', href: '/dashboard/sales' },
-    { label: 'Payment Setup', href: '/dashboard/payment-setup', isPayment: true },
-    { label: 'Settings', href: '/dashboard/settings' },
-  ];
-
-  const handleSignOut = () => {
-    localStorage.removeItem('streak-wallet');
-    localStorage.removeItem('streak-shop-id');
-    document.cookie = 'streak-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    await supabase.auth.signOut();
     router.push('/login');
-  };
+    router.refresh();
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition"
-        >
-          <span className="block w-6 h-0.5 bg-black mb-1.5" />
-          <span className="block w-6 h-0.5 bg-black mb-1.5" />
-          <span className="block w-6 h-0.5 bg-black" />
-        </button>
-      </div>
+    <div className="min-h-screen bg-stone-50 text-slate-950">
+      <button
+        type="button"
+        onClick={() => setIsSidebarOpen((current) => !current)}
+        className="fixed left-4 top-4 z-50 rounded-lg border border-slate-200 bg-white p-2 lg:hidden"
+        aria-label="メニュー"
+      >
+        <span className="block h-0.5 w-6 bg-slate-950" />
+        <span className="mt-1.5 block h-0.5 w-6 bg-slate-950" />
+        <span className="mt-1.5 block h-0.5 w-6 bg-slate-950" />
+      </button>
 
-      <div className="flex h-screen">
-        {/* Sidebar */}
+      <div className="flex min-h-screen">
         <aside
-          className={`w-64 bg-white border-r border-gray-200 flex flex-col p-6 fixed lg:relative h-full z-40 transition-transform lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white p-6 transition-transform lg:static lg:translate-x-0 ${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Logo */}
-          <div className="mb-12">
-            <a href="/">
-              <Image
-                src="/images/logo.png"
-                alt="STREAK Logo"
-                width={120}
-                height={40}
-                priority
-                className="h-10 w-auto"
-              />
-            </a>
-          </div>
+          <Link href="/" className="mb-10 text-xl font-semibold tracking-[0.18em]">
+            STREAK
+          </Link>
 
-          {/* Navigation */}
-          <nav className="space-y-2 flex-1">
+          <nav className="flex-1 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
-              const showBadge = item.isPayment && crossmintConfigured === false;
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                  className={`block rounded-lg px-4 py-3 text-sm font-medium transition ${
+                    isActive ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="flex items-center gap-2">
-                    {item.isPayment && (
-                      <CreditCard className="w-4 h-4 shrink-0" />
-                    )}
-                    {item.label}
-                  </span>
-                  {showBadge && (
-                    <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                      !
-                    </span>
-                  )}
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Sign Out Button */}
           <button
+            type="button"
             onClick={handleSignOut}
-            className="w-full py-3 px-4 rounded-lg border border-gray-300 text-gray-900 font-medium hover:bg-gray-50 transition-colors"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium transition hover:bg-slate-50"
           >
-            Sign Out
+            ログアウト
           </button>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-8 lg:p-12">
-            {children}
-          </div>
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto max-w-6xl px-5 py-10 lg:px-10">{children}</div>
         </main>
       </div>
     </div>
