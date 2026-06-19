@@ -17,6 +17,7 @@ import {
   updateOrderStatus,
   updateShop,
 } from "./actions";
+import { CopyPathButton } from "./CopyPathButton";
 
 export const metadata = {
   title: "Admin Dashboard | STREAK",
@@ -203,6 +204,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 >
                   Open public shop
                 </Link>
+                <CopyPathButton label="Copy public shop link" path={`/shop/${activeShop.slug}`} />
                 <button className="h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
                   Save shop
                 </button>
@@ -324,11 +326,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         />
                       </label>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="grid gap-1 text-sm text-[#65705f]">
+                        <div className="grid gap-2 text-sm text-[#65705f]">
                           <span>{product.active ? "Active" : "Hidden"}</span>
-                          <Link className="font-semibold underline" href={`/pay/${product.id}`}>
-                            Open payment page
-                          </Link>
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              className="inline-flex h-10 items-center rounded-md border border-[#c3c7b9] px-4 font-semibold text-[#171a16]"
+                              href={`/pay/${product.id}`}
+                            >
+                              Open payment page
+                            </Link>
+                            <CopyPathButton path={`/pay/${product.id}`} />
+                          </div>
                         </div>
                         <button className="h-10 rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white">
                           Save product

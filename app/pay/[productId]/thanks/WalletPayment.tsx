@@ -139,41 +139,71 @@ export function WalletPayment({
   }
 
   return (
-    <div className="mt-6 border border-[#d7d9ce] bg-[#fbfcf7] p-4">
-      <h2 className="text-lg font-semibold">Wallet payment</h2>
-      <p className="mt-2 text-sm leading-6 text-[#4d5548]">
-        This sends {network.label} directly from the buyer wallet to the merchant
-        wallet. STREAK does not custody funds.
-      </p>
-      <p className="mt-2 text-xs font-semibold text-[#65705f]">
-        Mode: {network.modeLabel}
-      </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <button
-          className="h-10 rounded-md border border-[#c3c7b9] px-3 text-sm font-semibold"
-          onClick={connectWallet}
-          type="button"
-        >
-          Connect wallet
-        </button>
-        <button
-          className="h-10 rounded-md border border-[#c3c7b9] px-3 text-sm font-semibold"
-          onClick={switchToPolygon}
-          type="button"
-        >
+    <section className="mt-6 border border-[#d7d9ce] bg-white p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Pay with wallet</h2>
+          <p className="mt-2 text-sm leading-6 text-[#4d5548]">
+            STREAK sends the payment request to MetaMask. After the transaction
+            is submitted, STREAK verifies it on-chain.
+          </p>
+        </div>
+        <span className="inline-flex w-fit border border-[#c3c7b9] px-3 py-1 text-sm font-semibold">
           {network.modeLabel}
-        </button>
-        <button
-          className="h-10 rounded-md bg-[#171a16] px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#cfd5c7] disabled:text-[#596052]"
-          disabled={!account || !canPay}
-          onClick={sendUsdc}
-          type="button"
-        >
-          Send USDC
-        </button>
+        </span>
       </div>
-      {account ? <p className="mt-3 break-all font-mono text-xs">{account}</p> : null}
-      {message ? <p className="mt-3 text-sm text-[#4d5548]">{message}</p> : null}
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="border border-[#edf0e8] bg-[#fbfcf7] p-4">
+          <p className="text-sm font-semibold">1. Connect</p>
+          <p className="mt-2 min-h-10 text-xs leading-5 text-[#65705f]">
+            {account ? "Wallet connected." : "Connect MetaMask first."}
+          </p>
+          <button
+            className="mt-3 h-10 w-full rounded-md border border-[#c3c7b9] px-3 text-sm font-semibold"
+            onClick={connectWallet}
+            type="button"
+          >
+            {account ? "Reconnect wallet" : "Connect wallet"}
+          </button>
+        </div>
+
+        <div className="border border-[#edf0e8] bg-[#fbfcf7] p-4">
+          <p className="text-sm font-semibold">2. Confirm network</p>
+          <p className="mt-2 min-h-10 text-xs leading-5 text-[#65705f]">
+            Use {network.chainName} for this order.
+          </p>
+          <button
+            className="mt-3 h-10 w-full rounded-md border border-[#c3c7b9] px-3 text-sm font-semibold"
+            onClick={switchToPolygon}
+            type="button"
+          >
+            Switch network
+          </button>
+        </div>
+
+        <div className="border border-[#edf0e8] bg-[#fbfcf7] p-4">
+          <p className="text-sm font-semibold">3. Send</p>
+          <p className="mt-2 min-h-10 text-xs leading-5 text-[#65705f]">
+            MetaMask will ask you to confirm {amountUsdc} USDC.
+          </p>
+          <button
+            className="mt-3 h-10 w-full rounded-md bg-[#171a16] px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#cfd5c7] disabled:text-[#596052]"
+            disabled={!account || !canPay}
+            onClick={sendUsdc}
+            type="button"
+          >
+            Send USDC
+          </button>
+        </div>
+      </div>
+
+      {account ? (
+        <p className="mt-4 break-all border border-[#edf0e8] bg-[#fbfcf7] p-3 font-mono text-xs">
+          Connected wallet: {account}
+        </p>
+      ) : null}
+      {message ? <p className="mt-4 text-sm font-medium text-[#4d5548]">{message}</p> : null}
       <input name={onTxHashName} type="hidden" value={txHash} />
       {showManualInput ? (
         <>
@@ -201,7 +231,7 @@ export function WalletPayment({
             disabled={!canSaveTxHash}
             type="submit"
           >
-            Save transaction hash
+            Verify payment
           </button>
         </>
       ) : (
@@ -219,6 +249,6 @@ export function WalletPayment({
           Enter transaction hash manually
         </button>
       ) : null}
-    </div>
+    </section>
   );
 }

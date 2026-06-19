@@ -45,7 +45,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
   return (
     <main className="min-h-screen bg-[#f7f8f3] text-[#171a16]">
-      <section className="mx-auto flex w-full max-w-5xl flex-col px-6 py-8 sm:px-10 lg:px-12">
+      <section className="mx-auto flex w-full max-w-6xl flex-col px-6 py-8 sm:px-10 lg:px-12">
         <header className="flex items-center justify-between border-b border-[#d7d9ce] pb-5">
           <Link className="text-xl font-semibold tracking-[0.18em]" href="/">
             STREAK
@@ -55,27 +55,31 @@ export default async function ShopPage({ params }: ShopPageProps) {
           </Link>
         </header>
 
-        <section className="py-12">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
-            Public shop
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            {shop.name}
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
-            Pay with Polygon USDC directly to the merchant wallet. STREAK records the
-            order, but does not custody funds or reverse blockchain transactions.
-          </p>
-          <p className="mt-5 inline-flex border border-[#c3c7b9] bg-white px-3 py-1 text-sm font-semibold">
-            {paymentNetwork.modeLabel}: {paymentNetwork.label}
-          </p>
+        <section className="grid gap-8 py-10 lg:grid-cols-[1fr_360px] lg:items-end">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
+              Select a product
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+              {shop.name}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
+              Choose a product, create an order, then pay with USDC from your
+              wallet. Funds are sent directly to the merchant wallet.
+            </p>
+          </div>
+          <aside className="border border-[#d7d9ce] bg-white p-5">
+            <p className="text-sm font-semibold text-[#65705f]">Payment mode</p>
+            <p className="mt-2 text-lg font-semibold">{paymentNetwork.modeLabel}</p>
+            <p className="mt-1 text-sm leading-6 text-[#4d5548]">{paymentNetwork.label}</p>
+          </aside>
         </section>
 
         <section className="grid gap-4 pb-12">
           {products.length ? (
             products.map((product) => (
               <article
-                className="grid gap-4 border border-[#d7d9ce] bg-white p-5 md:grid-cols-[1fr_auto] md:items-center"
+                className="grid gap-5 border border-[#d7d9ce] bg-white p-5 md:grid-cols-[1fr_auto] md:items-center"
                 key={product.id}
               >
                 <div>
@@ -90,10 +94,10 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   </p>
                 </div>
                 <Link
-                  className="inline-flex h-11 items-center justify-center rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-[#171a16] px-6 text-sm font-semibold text-white"
                   href={`/pay/${product.id}`}
                 >
-                  Pay with USDC
+                  Continue
                 </Link>
               </article>
             ))
