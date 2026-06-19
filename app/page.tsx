@@ -30,6 +30,9 @@ export default function Home() {
             STREAK
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-[#596052] sm:flex">
+            <Link className="transition hover:text-[#171a16]" href="/admin/login">
+              Admin
+            </Link>
             <a className="transition hover:text-[#171a16]" href="#plan">
               Plan
             </a>
@@ -54,8 +57,14 @@ export default function Home() {
               STREAK is being rebuilt under the new account stack. The first target is a focused MVP: admin login, merchant onboarding, product setup, and Polygon USDC payment links.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a
+              <Link
                 className="inline-flex h-12 items-center justify-center rounded-md bg-[#171a16] px-6 text-sm font-semibold text-white transition hover:bg-[#2c3129]"
+                href="/admin/login"
+              >
+                Admin Login
+              </Link>
+              <a
+                className="inline-flex h-12 items-center justify-center rounded-md border border-[#c3c7b9] px-6 text-sm font-semibold text-[#171a16] transition hover:border-[#171a16]"
                 href="https://github.com/youyij357-droid/streak"
               >
                 GitHub Repository
