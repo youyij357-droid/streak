@@ -20,7 +20,14 @@ type ThanksPageProps = {
 const errorMessages: Record<string, string> = {
   "invalid-tx-hash":
     "Transaction hash must start with 0x and contain 64 hexadecimal characters. Do not paste the merchant wallet address here.",
+  "merchant-wallet-missing": "The merchant wallet is not set. Please contact the merchant.",
+  "order-not-found": "Order was not found. Please create a new order.",
+  "tx-failed": "This transaction failed on-chain. Please submit a successful transaction.",
   "tx-hash-required": "Enter the transaction hash from MetaMask after submitting payment.",
+  "tx-not-found-or-pending":
+    "This transaction was not found on the selected network yet. Check the network or wait a few minutes and try again.",
+  "tx-usdc-transfer-not-found":
+    "This transaction does not match the order. Confirm the network, recipient wallet, token, and amount.",
 };
 
 export default async function ThanksPage({ params, searchParams }: ThanksPageProps) {
@@ -84,7 +91,9 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
         ) : null}
         {success ? (
           <p className="mt-5 border border-[#b8d8b5] bg-[#f1faef] p-3 text-sm font-medium text-[#176b32]">
-            Transaction hash was saved. The merchant will confirm payment.
+            {success === "payment-verified"
+              ? "Payment was verified on-chain and the order was marked as paid."
+              : "Transaction hash was saved. The merchant will confirm payment."}
           </p>
         ) : null}
         <form action={submitPaymentTxHash}>

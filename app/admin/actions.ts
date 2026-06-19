@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { normalizePaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { isTransactionHash, slugify } from "@/lib/format";
+import { verifyPaymentTx } from "@/lib/verify-payment";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -170,10 +171,38 @@ export async function updateOrderStatus(formData: FormData) {
     redirect("/admin?error=invalid-tx-hash");
   }
 
+  let nextStatus = status;
+
+  if (paymentTxHash) {
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("amount_usdc, payment_network, shops(wallet_address)")
+      .eq("id", orderId)
+      .single();
+
+    if (orderError || !order) {
+      redirect("/admin?error=order-not-found");
+    }
+
+    const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
+    const verification = await verifyPaymentTx({
+      amountUsdc: order.amount_usdc,
+      merchantWallet: shop?.wallet_address ?? null,
+      paymentNetwork: order.payment_network,
+      txHash: paymentTxHash,
+    });
+
+    if (!verification.ok) {
+      redirect(`/admin?error=${verification.error}`);
+    }
+
+    nextStatus = "paid";
+  }
+
   const { error } = await supabase
     .from("orders")
     .update({
-      status,
+      status: nextStatus,
       payment_tx_hash: paymentTxHash || null,
     })
     .eq("id", orderId);

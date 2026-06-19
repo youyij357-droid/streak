@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isTransactionHash } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { verifyPaymentTx } from "@/lib/verify-payment";
 
 export async function submitPaymentTxHash(formData: FormData) {
   const supabase = await createClient();
@@ -18,12 +19,35 @@ export async function submitPaymentTxHash(formData: FormData) {
     redirect(`/pay/${productId}/thanks?order=${orderId}&error=invalid-tx-hash`);
   }
 
-  const { error } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from("orders")
-    .update({ payment_tx_hash: paymentTxHash })
+    .select("amount_usdc, payment_network, shops(wallet_address)")
     .eq("id", orderId)
     .eq("product_id", productId)
-    .eq("status", "pending");
+    .single();
+
+  if (orderError || !order) {
+    redirect(`/pay/${productId}/thanks?order=${orderId}&error=order-not-found`);
+  }
+
+  const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
+  const verification = await verifyPaymentTx({
+    amountUsdc: order.amount_usdc,
+    merchantWallet: shop?.wallet_address ?? null,
+    paymentNetwork: order.payment_network,
+    txHash: paymentTxHash,
+  });
+
+  if (!verification.ok) {
+    redirect(`/pay/${productId}/thanks?order=${orderId}&error=${verification.error}`);
+  }
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ payment_tx_hash: paymentTxHash, status: "paid" })
+    .eq("id", orderId)
+    .eq("product_id", productId)
+    .in("status", ["pending", "paid"]);
 
   if (error) {
     redirect(
@@ -31,5 +55,5 @@ export async function submitPaymentTxHash(formData: FormData) {
     );
   }
 
-  redirect(`/pay/${productId}/thanks?order=${orderId}&success=tx-recorded`);
+  redirect(`/pay/${productId}/thanks?order=${orderId}&success=payment-verified`);
 }

@@ -40,7 +40,14 @@ const successMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "invalid-tx-hash":
     "Transaction hash must start with 0x and contain 64 hexadecimal characters. Clear wallet addresses from this field.",
+  "merchant-wallet-missing": "Merchant wallet is not set.",
+  "order-not-found": "Order was not found.",
   "order-status-required": "Select a valid order status.",
+  "tx-failed": "This transaction failed on-chain.",
+  "tx-not-found-or-pending":
+    "This transaction was not found on the selected network yet. Check the network or wait a few minutes.",
+  "tx-usdc-transfer-not-found":
+    "This transaction does not match the order recipient, token, or amount.",
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
