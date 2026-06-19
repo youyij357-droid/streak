@@ -4,8 +4,8 @@ import {
   formatUsdc,
   isTransactionHash,
   isWalletAddress,
-  polygonScanTxUrl,
 } from "@/lib/format";
+import { getPaymentNetwork, paymentNetworkExplorerTxUrl } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOutAdmin } from "./login/actions";
@@ -82,6 +82,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const paidTotal = orders
     .filter((order) => order.status === "paid")
     .reduce((sum, order) => sum + Number(order.amount_usdc ?? 0), 0);
+  const activeNetwork = getPaymentNetwork(activeShop?.payment_network);
 
   return (
     <main className="min-h-screen bg-[#f7f8f3] text-[#171a16]">
@@ -166,6 +167,20 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     placeholder="0x..."
                   />
                 </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  Payment network
+                  <select
+                    className="h-11 border border-[#c3c7b9] bg-white px-3 outline-none focus:border-[#171a16]"
+                    defaultValue={activeShop.payment_network ?? "polygon_mainnet"}
+                    name="payment_network"
+                  >
+                    <option value="polygon_mainnet">Mainnet - Polygon USDC</option>
+                    <option value="polygon_amoy">Testnet - Polygon Amoy USDC</option>
+                  </select>
+                </label>
+                <p className="text-sm font-medium text-[#65705f]">
+                  Current mode: {activeNetwork.modeLabel}
+                </p>
                 <p className="text-sm text-[#65705f]">
                   Public shop slug: <span className="font-mono">{activeShop.slug}</span>
                 </p>
@@ -369,9 +384,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     {isTransactionHash(order.payment_tx_hash) ? (
                       <a
                         className="inline-flex break-all text-xs font-semibold underline"
-                        href={polygonScanTxUrl(order.payment_tx_hash)}
+                        href={paymentNetworkExplorerTxUrl(
+                          order.payment_network ?? activeShop?.payment_network,
+                          order.payment_tx_hash,
+                        )}
                       >
-                        Open on Polygonscan
+                        Open on explorer
                       </a>
                     ) : order.payment_tx_hash ? (
                       <p className="text-xs font-medium text-[#8c2f16]">

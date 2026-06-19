@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getPaymentNetwork } from "@/lib/payment-networks";
 
 declare global {
   interface Window {
@@ -9,16 +10,6 @@ declare global {
     };
   }
 }
-
-const polygonChainId = "0x89";
-const usdcContract = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
-const polygonParams = {
-  chainId: polygonChainId,
-  chainName: "Polygon Mainnet",
-  nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 },
-  rpcUrls: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com"],
-  blockExplorerUrls: ["https://polygonscan.com"],
-};
 
 function encodeTransfer(to: string, amountUsdc: string) {
   const cleanTo = to.replace(/^0x/i, "").padStart(64, "0");
@@ -35,6 +26,7 @@ type WalletPaymentProps = {
   initialTxHash?: string;
   merchantWallet: string;
   onTxHashName: string;
+  paymentNetwork?: string | null;
 };
 
 export function WalletPayment({
@@ -42,7 +34,9 @@ export function WalletPayment({
   initialTxHash = "",
   merchantWallet,
   onTxHashName,
+  paymentNetwork,
 }: WalletPaymentProps) {
+  const network = getPaymentNetwork(paymentNetwork);
   const [account, setAccount] = useState("");
   const [txHash, setTxHash] = useState(initialTxHash);
   const [message, setMessage] = useState("");
@@ -68,7 +62,7 @@ export function WalletPayment({
     } catch (error) {
       console.error("connectWallet failed", error);
       setMessage(
-        "Wallet connection failed. Open MetaMask, switch to Polygon Mainnet, then try again.",
+        `Wallet connection failed. Open MetaMask, switch to ${network.chainName}, then try again.`,
       );
     }
   }
@@ -82,24 +76,32 @@ export function WalletPayment({
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: polygonChainId }],
+        params: [{ chainId: network.chainId }],
       });
-      setMessage("Polygon network is selected.");
+      setMessage(`${network.chainName} is selected.`);
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? error.code : null;
 
       if (code === 4902) {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
-          params: [polygonParams],
+          params: [
+            {
+              chainId: network.chainId,
+              chainName: network.chainName,
+              nativeCurrency: network.nativeCurrency,
+              rpcUrls: network.rpcUrls,
+              blockExplorerUrls: [network.blockExplorerUrl],
+            },
+          ],
         });
-        setMessage("Polygon network was added.");
+        setMessage(`${network.chainName} was added.`);
         return;
       }
 
       console.error("switchToPolygon failed", error);
       setMessage(
-        "Could not switch networks. Open MetaMask and select Polygon Mainnet manually.",
+        `Could not switch networks. Open MetaMask and select ${network.chainName} manually.`,
       );
       throw error;
     }
@@ -118,7 +120,7 @@ export function WalletPayment({
       params: [
         {
           from: account,
-          to: usdcContract,
+          to: network.usdcContract,
           value: "0x0",
           data: encodeTransfer(merchantWallet, amountUsdc),
         },
@@ -133,8 +135,11 @@ export function WalletPayment({
     <div className="mt-6 border border-[#d7d9ce] bg-[#fbfcf7] p-4">
       <h2 className="text-lg font-semibold">Wallet payment</h2>
       <p className="mt-2 text-sm leading-6 text-[#4d5548]">
-        This sends Polygon USDC directly from the buyer wallet to the merchant
+        This sends {network.label} directly from the buyer wallet to the merchant
         wallet. STREAK does not custody funds.
+      </p>
+      <p className="mt-2 text-xs font-semibold text-[#65705f]">
+        Mode: {network.modeLabel}
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <button
@@ -149,7 +154,7 @@ export function WalletPayment({
           onClick={switchToPolygon}
           type="button"
         >
-          Polygon
+          {network.modeLabel}
         </button>
         <button
           className="h-10 rounded-md bg-[#171a16] px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#cfd5c7] disabled:text-[#596052]"

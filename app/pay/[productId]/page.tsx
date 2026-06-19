@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatUsdc } from "@/lib/format";
+import { getPaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { createOrder } from "./actions";
 
@@ -19,7 +20,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
   const supabase = await createClient();
   const { data: product } = await supabase
     .from("products")
-    .select("*, shops(name, slug, wallet_address)")
+    .select("*, shops(*)")
     .eq("id", productId)
     .eq("active", true)
     .single();
@@ -27,6 +28,8 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
   if (!product) {
     notFound();
   }
+
+  const paymentNetwork = getPaymentNetwork(product.shops?.payment_network);
 
   return (
     <main className="min-h-screen bg-[#f7f8f3] text-[#171a16]">
@@ -50,6 +53,9 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
           </p>
           <p className="mt-3 text-sm text-[#65705f]">
             Merchant: {product.shops?.name ?? "STREAK merchant"}
+          </p>
+          <p className="mt-3 inline-flex border border-[#c3c7b9] bg-white px-3 py-1 text-sm font-semibold text-[#171a16]">
+            {paymentNetwork.modeLabel}: {paymentNetwork.label}
           </p>
           <div className="mt-8 border border-[#d7d9ce] bg-white p-4 text-sm leading-6 text-[#4d5548]">
             <p className="font-semibold text-[#171a16]">USDC risk notice</p>
@@ -80,6 +86,11 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
             <input name="product_id" type="hidden" value={product.id} />
             <input name="shop_id" type="hidden" value={product.shop_id} />
             <input name="amount_usdc" type="hidden" value={product.price_usdc} />
+            <input
+              name="payment_network"
+              type="hidden"
+              value={product.shops?.payment_network ?? "polygon_mainnet"}
+            />
             <label className="grid gap-2 text-sm font-medium">
               Buyer email
               <input
@@ -90,6 +101,8 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
               />
             </label>
             <div className="border border-[#edf0e8] bg-[#fbfcf7] p-4 text-sm leading-6 text-[#4d5548]">
+              Network: <span className="font-semibold">{paymentNetwork.label}</span>
+              <br />
               Payment wallet:{" "}
               <span className="break-all font-mono">
                 {product.shops?.wallet_address || "Merchant wallet not set yet"}

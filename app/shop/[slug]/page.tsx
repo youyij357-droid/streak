@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatUsdc } from "@/lib/format";
+import { getPaymentNetwork } from "@/lib/payment-networks";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,7 +25,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
   const { data: shop } = await supabase
     .from("shops")
-    .select("id, name, slug, wallet_address")
+    .select("*")
     .eq("slug", slug)
     .single();
 
@@ -40,6 +41,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
     .order("created_at", { ascending: false });
 
   const products = productRows ?? [];
+  const paymentNetwork = getPaymentNetwork(shop.payment_network);
 
   return (
     <main className="min-h-screen bg-[#f7f8f3] text-[#171a16]">
@@ -63,6 +65,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
           <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
             Pay with Polygon USDC directly to the merchant wallet. STREAK records the
             order, but does not custody funds or reverse blockchain transactions.
+          </p>
+          <p className="mt-5 inline-flex border border-[#c3c7b9] bg-white px-3 py-1 text-sm font-semibold">
+            {paymentNetwork.modeLabel}: {paymentNetwork.label}
           </p>
         </section>
 

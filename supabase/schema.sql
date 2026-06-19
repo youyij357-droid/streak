@@ -6,6 +6,9 @@ create table if not exists public.shops (
   name text not null,
   slug text not null unique,
   wallet_address text,
+  payment_network text not null default 'polygon_mainnet' check (
+    payment_network in ('polygon_mainnet', 'polygon_amoy')
+  ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -31,6 +34,9 @@ create table if not exists public.orders (
     status in ('pending', 'paid', 'expired', 'cancelled')
   ),
   payment_tx_hash text,
+  payment_network text not null default 'polygon_mainnet' check (
+    payment_network in ('polygon_mainnet', 'polygon_amoy')
+  ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

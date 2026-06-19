@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { normalizePaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createOrder(formData: FormData) {
@@ -9,6 +10,7 @@ export async function createOrder(formData: FormData) {
   const shopId = String(formData.get("shop_id") ?? "");
   const buyerEmail = String(formData.get("buyer_email") ?? "").trim();
   const amountUsdc = Number(formData.get("amount_usdc") ?? 0);
+  const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
 
   if (!productId || !shopId || !Number.isFinite(amountUsdc) || amountUsdc <= 0) {
     redirect(`/pay/${productId}?error=invalid-order`);
@@ -21,6 +23,7 @@ export async function createOrder(formData: FormData) {
       product_id: productId,
       buyer_email: buyerEmail || null,
       amount_usdc: amountUsdc,
+      payment_network: paymentNetwork,
       status: "pending",
     })
     .select("id")

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizePaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { isTransactionHash, slugify } from "@/lib/format";
 
@@ -51,6 +52,7 @@ export async function updateShop(formData: FormData) {
   const shopId = String(formData.get("shop_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
+  const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
 
   if (!shopId || !name) {
     redirect("/admin?error=shop-update-required");
@@ -61,6 +63,7 @@ export async function updateShop(formData: FormData) {
     .update({
       name,
       wallet_address: walletAddress || null,
+      payment_network: paymentNetwork,
     })
     .eq("id", shopId);
 

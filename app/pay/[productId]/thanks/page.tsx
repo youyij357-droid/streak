@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatUsdc } from "@/lib/format";
+import { getPaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { submitPaymentTxHash } from "./actions";
 import { WalletPayment } from "./WalletPayment";
@@ -27,7 +28,7 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("*, products(name), shops(name, wallet_address)")
+    .select("*, products(name), shops(*)")
     .eq("id", orderId)
     .eq("product_id", productId)
     .single();
@@ -35,6 +36,8 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
   if (!order) {
     notFound();
   }
+
+  const paymentNetwork = getPaymentNetwork(order.payment_network ?? order.shops?.payment_network);
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f8f3] px-6 text-[#171a16]">
@@ -44,7 +47,7 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
         </p>
         <h1 className="mt-4 text-4xl font-semibold">Pending payment</h1>
         <p className="mt-4 text-sm leading-6 text-[#4d5548]">
-          Send {formatUsdc(order.amount_usdc)} Polygon USDC to the merchant
+          Send {formatUsdc(order.amount_usdc)} {paymentNetwork.label} to the merchant
           wallet below. The merchant can mark the order as paid from the admin
           dashboard after confirming the transaction.
         </p>
@@ -56,6 +59,10 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
           <div className="border-b border-[#edf0e8] pb-3">
             <dt className="text-[#65705f]">Product</dt>
             <dd className="mt-1 font-medium">{order.products?.name}</dd>
+          </div>
+          <div>
+            <dt className="text-[#65705f]">Network</dt>
+            <dd className="mt-1 font-medium">{paymentNetwork.label}</dd>
           </div>
           <div>
             <dt className="text-[#65705f]">Wallet</dt>
@@ -82,6 +89,7 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
             initialTxHash={order.payment_tx_hash ?? ""}
             merchantWallet={order.shops?.wallet_address ?? ""}
             onTxHashName="payment_tx_hash"
+            paymentNetwork={order.payment_network ?? order.shops?.payment_network}
           />
           <button className="mt-4 h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
             Save transaction hash
