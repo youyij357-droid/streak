@@ -38,11 +38,12 @@ export async function createShop(formData: FormData) {
   });
 
   if (error) {
+    console.error("createShop failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?success=shop-created");
 }
 
 export async function updateShop(formData: FormData) {
@@ -64,11 +65,12 @@ export async function updateShop(formData: FormData) {
     .eq("id", shopId);
 
   if (error) {
+    console.error("updateShop failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?success=shop-updated");
 }
 
 export async function createProduct(formData: FormData) {
@@ -91,11 +93,12 @@ export async function createProduct(formData: FormData) {
   });
 
   if (error) {
+    console.error("createProduct failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?success=product-created");
 }
 
 export async function toggleProduct(formData: FormData) {
@@ -113,11 +116,12 @@ export async function toggleProduct(formData: FormData) {
     .eq("id", productId);
 
   if (error) {
+    console.error("toggleProduct failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?success=product-updated");
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -139,9 +143,10 @@ export async function updateOrderStatus(formData: FormData) {
     .eq("id", orderId);
 
   if (error) {
+    console.error("updateOrderStatus failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?success=order-updated");
 }

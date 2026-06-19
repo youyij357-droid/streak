@@ -19,7 +19,16 @@ export const metadata = {
 type AdminPageProps = {
   searchParams: Promise<{
     error?: string;
+    success?: string;
   }>;
+};
+
+const successMessages: Record<string, string> = {
+  "shop-created": "Shop was created.",
+  "shop-updated": "Shop settings were saved.",
+  "product-created": "Product was created.",
+  "product-updated": "Product status was updated.",
+  "order-updated": "Order was updated.",
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
@@ -38,14 +47,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect("/admin/login");
   }
 
-  const { data: shopRows } = await supabase
+  const { data: shopRows, error: shopsError } = await supabase
     .from("shops")
     .select("*")
     .order("created_at", { ascending: true });
   const shops = shopRows ?? [];
   const activeShop = shops[0] ?? null;
 
-  const { data: productRows } = activeShop
+  const { data: productRows, error: productsError } = activeShop
     ? await supabase
         .from("products")
         .select("*")
@@ -54,7 +63,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     : { data: [] };
   const products = productRows ?? [];
 
-  const { data: orderRows } = activeShop
+  const { data: orderRows, error: ordersError } = activeShop
     ? await supabase
         .from("orders")
         .select("*, products(name)")
@@ -89,6 +98,23 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <p className="mt-6 border border-[#e7b8a7] bg-[#fff4ef] p-3 text-sm font-medium text-[#8c2f16]">
             {params.error}
           </p>
+        ) : null}
+
+        {params.success ? (
+          <p className="mt-6 border border-[#b8d8b5] bg-[#f1faef] p-3 text-sm font-medium text-[#176b32]">
+            {successMessages[params.success] ?? "Saved."}
+          </p>
+        ) : null}
+
+        {shopsError || productsError || ordersError ? (
+          <section className="mt-6 border border-[#e7b8a7] bg-[#fff4ef] p-4 text-sm text-[#8c2f16]">
+            <p className="font-semibold">Database read issue</p>
+            <ul className="mt-2 grid gap-1">
+              {shopsError ? <li>shops: {shopsError.message}</li> : null}
+              {productsError ? <li>products: {productsError.message}</li> : null}
+              {ordersError ? <li>orders: {ordersError.message}</li> : null}
+            </ul>
+          </section>
         ) : null}
 
         <section className="grid gap-4 py-8 md:grid-cols-4">
