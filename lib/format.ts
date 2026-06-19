@@ -22,3 +22,7 @@ export function polygonScanTxUrl(txHash: string | null) {
 
   return `https://polygonscan.com/tx/${txHash}`;
 }
+
+export function isTransactionHash(value: string | null) {
+  return /^0x[a-fA-F0-9]{64}$/.test(value ?? "");
+}

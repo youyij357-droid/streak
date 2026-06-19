@@ -46,6 +46,7 @@ export function WalletPayment({
   const [account, setAccount] = useState("");
   const [txHash, setTxHash] = useState(initialTxHash);
   const [message, setMessage] = useState("");
+  const txHashLooksInvalid = txHash.length > 0 && !/^0x[a-fA-F0-9]{64}$/.test(txHash);
   const canPay = useMemo(
     () => Boolean(merchantWallet && merchantWallet.startsWith("0x")),
     [merchantWallet],
@@ -167,10 +168,20 @@ export function WalletPayment({
           className="h-11 border border-[#c3c7b9] bg-white px-3 outline-none focus:border-[#171a16]"
           name={onTxHashName}
           onChange={(event) => setTxHash(event.target.value)}
-          placeholder="0x..."
+          placeholder="0x followed by 64 characters"
           value={txHash}
         />
       </label>
+      {txHashLooksInvalid ? (
+        <p className="mt-2 text-xs font-medium text-[#8c2f16]">
+          This does not look like a transaction hash. Do not paste the merchant
+          wallet address here.
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-[#65705f]">
+          A transaction hash is created after MetaMask submits the payment.
+        </p>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isTransactionHash } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export async function submitPaymentTxHash(formData: FormData) {
@@ -11,6 +12,10 @@ export async function submitPaymentTxHash(formData: FormData) {
 
   if (!productId || !orderId || !paymentTxHash) {
     redirect(`/pay/${productId}/thanks?order=${orderId}&error=tx-hash-required`);
+  }
+
+  if (!isTransactionHash(paymentTxHash)) {
+    redirect(`/pay/${productId}/thanks?order=${orderId}&error=invalid-tx-hash`);
   }
 
   const { error } = await supabase
