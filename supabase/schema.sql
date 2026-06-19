@@ -168,3 +168,12 @@ drop policy if exists "Anyone can read their pending order by id" on public.orde
 create policy "Anyone can read their pending order by id"
 on public.orders for select
 using (status = 'pending');
+
+drop policy if exists "Anyone can attach tx hash to pending orders" on public.orders;
+create policy "Anyone can attach tx hash to pending orders"
+on public.orders for update
+using (status = 'pending')
+with check (
+  status = 'pending'
+  and payment_tx_hash is not null
+);

@@ -51,6 +51,22 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
           <p className="mt-3 text-sm text-[#65705f]">
             Merchant: {product.shops?.name ?? "STREAK merchant"}
           </p>
+          <div className="mt-8 border border-[#d7d9ce] bg-white p-4 text-sm leading-6 text-[#4d5548]">
+            <p className="font-semibold text-[#171a16]">USDC risk notice</p>
+            <p className="mt-2">
+              Cryptoasset and stablecoin transactions can be irreversible and
+              may involve price, network, wallet, and regulatory risks. Confirm
+              the merchant wallet before sending funds.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link className="font-semibold underline" href="/legal/usdc-risk">
+                Risk details
+              </Link>
+              <Link className="font-semibold underline" href="/legal/terms">
+                Terms
+              </Link>
+            </div>
+          </div>
         </div>
 
         <section className="border border-[#d7d9ce] bg-white p-6 shadow-[0_24px_80px_rgba(23,26,22,0.08)]">

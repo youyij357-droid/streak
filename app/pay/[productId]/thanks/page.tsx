@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatUsdc } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { submitPaymentTxHash } from "./actions";
+import { WalletPayment } from "./WalletPayment";
 
 type ThanksPageProps = {
   params: Promise<{
@@ -9,12 +11,14 @@ type ThanksPageProps = {
   }>;
   searchParams: Promise<{
     order?: string;
+    error?: string;
+    success?: string;
   }>;
 };
 
 export default async function ThanksPage({ params, searchParams }: ThanksPageProps) {
   const { productId } = await params;
-  const { order: orderId } = await searchParams;
+  const { order: orderId, error, success } = await searchParams;
 
   if (!orderId) {
     notFound();
@@ -34,7 +38,7 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f8f3] px-6 text-[#171a16]">
-      <section className="w-full max-w-xl border border-[#d7d9ce] bg-white p-6">
+      <section className="w-full max-w-2xl border border-[#d7d9ce] bg-white p-6">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
           Order created
         </p>
@@ -60,6 +64,29 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
             </dd>
           </div>
         </dl>
+        {error ? (
+          <p className="mt-5 border border-[#e7b8a7] bg-[#fff4ef] p-3 text-sm font-medium text-[#8c2f16]">
+            {error}
+          </p>
+        ) : null}
+        {success ? (
+          <p className="mt-5 border border-[#b8d8b5] bg-[#f1faef] p-3 text-sm font-medium text-[#176b32]">
+            Transaction hash was saved. The merchant will confirm payment.
+          </p>
+        ) : null}
+        <form action={submitPaymentTxHash}>
+          <input name="product_id" type="hidden" value={productId} />
+          <input name="order_id" type="hidden" value={order.id} />
+          <WalletPayment
+            amountUsdc={String(order.amount_usdc)}
+            initialTxHash={order.payment_tx_hash ?? ""}
+            merchantWallet={order.shops?.wallet_address ?? ""}
+            onTxHashName="payment_tx_hash"
+          />
+          <button className="mt-4 h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
+            Save transaction hash
+          </button>
+        </form>
         <Link
           className="mt-8 inline-flex h-11 items-center rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white"
           href={`/pay/${productId}`}
