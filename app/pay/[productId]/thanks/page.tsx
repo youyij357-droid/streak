@@ -17,6 +17,12 @@ type ThanksPageProps = {
   }>;
 };
 
+const errorMessages: Record<string, string> = {
+  "invalid-tx-hash":
+    "Transaction hash must start with 0x and contain 64 hexadecimal characters. Do not paste the merchant wallet address here.",
+  "tx-hash-required": "Enter the transaction hash from MetaMask after submitting payment.",
+};
+
 export default async function ThanksPage({ params, searchParams }: ThanksPageProps) {
   const { productId } = await params;
   const { order: orderId, error, success } = await searchParams;
@@ -73,7 +79,7 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
         </dl>
         {error ? (
           <p className="mt-5 border border-[#e7b8a7] bg-[#fff4ef] p-3 text-sm font-medium text-[#8c2f16]">
-            {error}
+            {errorMessages[error] ?? error}
           </p>
         ) : null}
         {success ? (

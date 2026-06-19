@@ -37,6 +37,12 @@ const successMessages: Record<string, string> = {
   "order-updated": "Order was updated.",
 };
 
+const errorMessages: Record<string, string> = {
+  "invalid-tx-hash":
+    "Transaction hash must start with 0x and contain 64 hexadecimal characters. Clear wallet addresses from this field.",
+  "order-status-required": "Select a valid order status.",
+};
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
 
@@ -103,7 +109,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
         {params.error ? (
           <p className="mt-6 border border-[#e7b8a7] bg-[#fff4ef] p-3 text-sm font-medium text-[#8c2f16]">
-            {params.error}
+            {errorMessages[params.error] ?? params.error}
           </p>
         ) : null}
 
