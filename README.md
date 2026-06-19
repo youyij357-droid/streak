@@ -31,6 +31,21 @@ Copy `.env.example` to `.env.local` and fill values after Supabase and supportin
 
 Secrets must not be committed. Store passwords and API keys in the password manager and Vercel Environment Variables.
 
+Supabase's current key model recommends:
+
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for browser/server user operations
+- `SUPABASE_SECRET_KEY` for server-only privileged work
+- Legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` remain supported as fallbacks while migrating
+
+## Supabase Setup
+
+1. Open Supabase SQL Editor.
+2. Run `supabase/schema.sql`.
+3. Enable Email/Password in Authentication.
+4. Create the first admin user.
+5. Add Supabase env values to Vercel Production.
+6. Confirm `/admin/login` signs in and `/api/health` reports `database: configured`.
+
 ## Next Build Checks
 
 ```bash
@@ -40,8 +55,7 @@ npm run build
 
 ## Next Implementation Steps
 
-1. Create a Supabase project after the service recovers.
-2. Add Supabase URL and keys to Vercel Environment Variables.
-3. Enable Email/Password authentication.
-4. Replace the placeholder admin login with real Supabase auth.
-5. Build merchant, product, order, and payment link flows.
+1. Add Supabase URL and keys to Vercel Environment Variables.
+2. Run the Supabase schema SQL.
+3. Confirm admin login with the first Auth user.
+4. Build merchant, product, order, and payment link flows.

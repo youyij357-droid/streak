@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { signOutAdmin } from "./login/actions";
 
 const milestones = [
   {
     label: "Account stack",
     status: "done",
-    detail: "Google, GitHub, and Vercel are rebuilt under the new account.",
+    detail: "Google, GitHub, Vercel, and Supabase are now on the new stack.",
   },
   {
     label: "Production deploy",
@@ -13,28 +16,35 @@ const milestones = [
   },
   {
     label: "Supabase project",
-    status: "waiting",
-    detail: "Project creation is blocked until Supabase service recovery.",
+    status: "ready",
+    detail: "The codebase is prepared for Supabase Auth and database setup.",
   },
   {
     label: "Admin auth",
-    status: "next",
-    detail: "Email/Password login will connect after Supabase keys are ready.",
+    status: "env",
+    detail: "Add Supabase env values and create the first admin user.",
   },
 ];
 
 const nextTasks = [
-  "Create Supabase project and record the project URL in the tracker.",
-  "Add production environment variables in Vercel.",
-  "Enable Supabase Email/Password auth.",
-  "Replace this readiness dashboard with authenticated admin pages.",
+  "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in Vercel.",
+  "Run the database schema SQL in the Supabase SQL Editor.",
+  "Create the first admin user in Supabase Authentication.",
+  "Confirm /admin/login signs in and redirects to /admin.",
 ];
 
 export const metadata = {
   title: "Admin Dashboard | STREAK",
 };
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const configured = isSupabaseConfigured();
+  const supabase = configured ? await createClient() : null;
+  const claims = supabase
+    ? await supabase.auth.getClaims()
+    : { data: { claims: null } };
+  const isSignedIn = Boolean(claims.data?.claims);
+
   return (
     <main className="min-h-screen bg-[#f7f8f3] text-[#171a16]">
       <section className="mx-auto flex w-full max-w-6xl flex-col px-6 py-8 sm:px-10 lg:px-12">
@@ -45,12 +55,20 @@ export default function AdminPage() {
             </Link>
             <p className="mt-2 text-sm text-[#65705f]">Admin readiness dashboard</p>
           </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-md border border-[#c3c7b9] px-5 text-sm font-semibold text-[#171a16] transition hover:border-[#171a16]"
-            href="/admin/login"
-          >
-            Login setup
-          </Link>
+          {isSignedIn ? (
+            <form action={signOutAdmin}>
+              <button className="inline-flex h-11 items-center justify-center rounded-md border border-[#c3c7b9] px-5 text-sm font-semibold text-[#171a16] transition hover:border-[#171a16]">
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-md border border-[#c3c7b9] px-5 text-sm font-semibold text-[#171a16] transition hover:border-[#171a16]"
+              href="/admin/login"
+            >
+              Login setup
+            </Link>
+          )}
         </header>
 
         <section className="grid gap-6 py-10 lg:grid-cols-[1fr_0.8fr]">
@@ -59,10 +77,12 @@ export default function AdminPage() {
               Current phase
             </p>
             <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-              Supabase接続前に進められる準備は完了状態です。
+              Supabase connection work can now begin.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
-              この画面は、認証が入る前の管理者用準備ページです。Supabase復旧後にログイン保護を追加し、加盟店・商品・注文・決済リンクの実データ画面へ置き換えます。
+              The app now has the SSR client, auth proxy, login action, and
+              readiness screens needed for Supabase. The remaining step is to
+              add the project values to Vercel and run the database schema.
             </p>
           </div>
 
@@ -79,11 +99,15 @@ export default function AdminPage() {
               </div>
               <div className="flex justify-between gap-4 border-b border-[#edf0e8] pb-3">
                 <dt className="text-[#65705f]">Supabase env</dt>
-                <dd className="text-right font-medium">Waiting</dd>
+                <dd className="text-right font-medium">
+                  {configured ? "Configured" : "Waiting"}
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-[#65705f]">Auth guard</dt>
-                <dd className="text-right font-medium">Next</dd>
+                <dt className="text-[#65705f]">Auth session</dt>
+                <dd className="text-right font-medium">
+                  {isSignedIn ? "Signed in" : "Not signed in"}
+                </dd>
               </div>
             </dl>
           </section>
@@ -105,7 +129,8 @@ export default function AdminPage() {
           <div>
             <h2 className="text-2xl font-semibold">Next implementation queue</h2>
             <p className="mt-3 text-sm leading-6 text-[#4d5548]">
-              Supabase復旧後にそのまま進める順番です。いまは秘密鍵をコードに入れず、Vercel環境変数へ入れる前提にしています。
+              Keep secrets out of the repository. Add them only to Vercel
+              Environment Variables and your local `.env.local`.
             </p>
           </div>
           <ol className="grid gap-3">
