@@ -39,8 +39,10 @@ export function WalletPayment({
   const network = getPaymentNetwork(paymentNetwork);
   const [account, setAccount] = useState("");
   const [txHash, setTxHash] = useState(initialTxHash);
+  const [showManualInput, setShowManualInput] = useState(Boolean(initialTxHash));
   const [message, setMessage] = useState("");
   const txHashLooksInvalid = txHash.length > 0 && !/^0x[a-fA-F0-9]{64}$/.test(txHash);
+  const canSaveTxHash = txHash.length > 0 && !txHashLooksInvalid;
   const canPay = useMemo(
     () => Boolean(merchantWallet && merchantWallet.startsWith("0x")),
     [merchantWallet],
@@ -49,7 +51,9 @@ export function WalletPayment({
   async function connectWallet() {
     setMessage("");
     if (!window.ethereum) {
-      setMessage("Browser wallet was not found.");
+      setMessage(
+        "MetaMask was not found. Use a browser with the MetaMask extension, or open this page in the MetaMask mobile browser.",
+      );
       return;
     }
 
@@ -69,7 +73,9 @@ export function WalletPayment({
 
   async function switchToPolygon() {
     if (!window.ethereum) {
-      setMessage("Browser wallet was not found.");
+      setMessage(
+        "MetaMask was not found. Use a browser with the MetaMask extension, or open this page in the MetaMask mobile browser.",
+      );
       return;
     }
 
@@ -128,6 +134,7 @@ export function WalletPayment({
     })) as string;
 
     setTxHash(hash);
+    setShowManualInput(true);
     setMessage("Transaction was submitted. Save the hash below.");
   }
 
@@ -167,26 +174,51 @@ export function WalletPayment({
       </div>
       {account ? <p className="mt-3 break-all font-mono text-xs">{account}</p> : null}
       {message ? <p className="mt-3 text-sm text-[#4d5548]">{message}</p> : null}
-      <label className="mt-4 grid gap-2 text-sm font-medium">
-        Transaction hash
-        <input
-          className="h-11 border border-[#c3c7b9] bg-white px-3 outline-none focus:border-[#171a16]"
-          name={onTxHashName}
-          onChange={(event) => setTxHash(event.target.value)}
-          placeholder="0x followed by 64 characters"
-          value={txHash}
-        />
-      </label>
-      {txHashLooksInvalid ? (
-        <p className="mt-2 text-xs font-medium text-[#8c2f16]">
-          This does not look like a transaction hash. Do not paste the merchant
-          wallet address here.
-        </p>
+      <input name={onTxHashName} type="hidden" value={txHash} />
+      {showManualInput ? (
+        <>
+          <label className="mt-4 grid gap-2 text-sm font-medium">
+            Transaction hash
+            <input
+              className="h-11 border border-[#c3c7b9] bg-white px-3 outline-none focus:border-[#171a16]"
+              onChange={(event) => setTxHash(event.target.value)}
+              placeholder="0x followed by 64 characters"
+              value={txHash}
+            />
+          </label>
+          {txHashLooksInvalid ? (
+            <p className="mt-2 text-xs font-medium text-[#8c2f16]">
+              This does not look like a transaction hash. Do not paste wallet
+              addresses or token contract addresses here.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-[#65705f]">
+              A transaction hash is created only after MetaMask submits the payment.
+            </p>
+          )}
+          <button
+            className="mt-4 h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#cfd5c7] disabled:text-[#596052]"
+            disabled={!canSaveTxHash}
+            type="submit"
+          >
+            Save transaction hash
+          </button>
+        </>
       ) : (
         <p className="mt-2 text-xs text-[#65705f]">
-          A transaction hash is created after MetaMask submits the payment.
+          The transaction hash appears after payment is submitted. Use manual entry
+          only if MetaMask completed the payment but the hash was not filled in.
         </p>
       )}
+      {!showManualInput ? (
+        <button
+          className="mt-4 h-10 rounded-md border border-[#c3c7b9] px-4 text-sm font-semibold"
+          onClick={() => setShowManualInput(true)}
+          type="button"
+        >
+          Enter transaction hash manually
+        </button>
+      ) : null}
     </div>
   );
 }

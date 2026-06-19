@@ -97,9 +97,6 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
             onTxHashName="payment_tx_hash"
             paymentNetwork={order.payment_network ?? order.shops?.payment_network}
           />
-          <button className="mt-4 h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
-            Save transaction hash
-          </button>
         </form>
         <Link
           className="mt-8 inline-flex h-11 items-center rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white"
