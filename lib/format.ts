@@ -14,3 +14,11 @@ export function slugify(value: string) {
     .replace(/(^-|-$)+/g, "")
     .slice(0, 48);
 }
+
+export function polygonScanTxUrl(txHash: string | null) {
+  if (!txHash) {
+    return "";
+  }
+
+  return `https://polygonscan.com/tx/${txHash}`;
+}

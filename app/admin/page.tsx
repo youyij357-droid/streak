@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { formatUsdc } from "@/lib/format";
+import { formatUsdc, polygonScanTxUrl } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOutAdmin } from "./login/actions";
@@ -8,6 +8,7 @@ import {
   createProduct,
   createShop,
   toggleProduct,
+  updateProduct,
   updateOrderStatus,
   updateShop,
 } from "./actions";
@@ -27,7 +28,7 @@ const successMessages: Record<string, string> = {
   "shop-created": "Shop was created.",
   "shop-updated": "Shop settings were saved.",
   "product-created": "Product was created.",
-  "product-updated": "Product status was updated.",
+  "product-updated": "Product was updated.",
   "order-updated": "Order was updated.",
 };
 
@@ -163,6 +164,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <p className="text-sm text-[#65705f]">
                   Public shop slug: <span className="font-mono">{activeShop.slug}</span>
                 </p>
+                <Link
+                  className="inline-flex text-sm font-semibold underline"
+                  href={`/shop/${activeShop.slug}`}
+                >
+                  Open public shop
+                </Link>
                 <button className="h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
                   Save shop
                 </button>
@@ -249,22 +256,52 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               {products.length ? (
                 products.map((product) => (
                   <div
-                    className="grid gap-4 border border-[#edf0e8] p-4 md:grid-cols-[1fr_auto]"
+                    className="grid gap-4 border border-[#edf0e8] p-4"
                     key={product.id}
                   >
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="mt-1 text-sm text-[#65705f]">
-                        {formatUsdc(product.price_usdc)} USDC ·{" "}
-                        {product.active ? "Active" : "Hidden"}
-                      </p>
-                      <Link
-                        className="mt-3 inline-flex text-sm font-semibold underline"
-                        href={`/pay/${product.id}`}
-                      >
-                        Open payment page
-                      </Link>
-                    </div>
+                    <form action={updateProduct} className="grid gap-3">
+                      <input name="product_id" type="hidden" value={product.id} />
+                      <label className="grid gap-2 text-sm font-medium">
+                        Product name
+                        <input
+                          className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
+                          defaultValue={product.name}
+                          name="name"
+                          required
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium">
+                        Price USDC
+                        <input
+                          className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
+                          defaultValue={product.price_usdc}
+                          min="0.01"
+                          name="price_usdc"
+                          step="0.000001"
+                          type="number"
+                          required
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium">
+                        Description
+                        <textarea
+                          className="min-h-20 border border-[#c3c7b9] p-3 outline-none focus:border-[#171a16]"
+                          defaultValue={product.description ?? ""}
+                          name="description"
+                        />
+                      </label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="grid gap-1 text-sm text-[#65705f]">
+                          <span>{product.active ? "Active" : "Hidden"}</span>
+                          <Link className="font-semibold underline" href={`/pay/${product.id}`}>
+                            Open payment page
+                          </Link>
+                        </div>
+                        <button className="h-10 rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white">
+                          Save product
+                        </button>
+                      </div>
+                    </form>
                     <form action={toggleProduct}>
                       <input name="product_id" type="hidden" value={product.id} />
                       <input
@@ -273,7 +310,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         value={product.active ? "false" : "true"}
                       />
                       <button className="h-10 rounded-md border border-[#c3c7b9] px-4 text-sm font-semibold">
-                        {product.active ? "Hide" : "Activate"}
+                        {product.active ? "Hide product" : "Activate product"}
                       </button>
                     </form>
                   </div>
@@ -324,6 +361,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       name="payment_tx_hash"
                       placeholder="Transaction hash"
                     />
+                    {order.payment_tx_hash ? (
+                      <a
+                        className="inline-flex break-all text-xs font-semibold underline"
+                        href={polygonScanTxUrl(order.payment_tx_hash)}
+                      >
+                        Open on Polygonscan
+                      </a>
+                    ) : null}
                     <button className="h-10 rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white">
                       Update order
                     </button>

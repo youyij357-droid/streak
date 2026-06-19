@@ -133,6 +133,24 @@ export default function Home() {
             </article>
           ))}
         </section>
+
+        <footer className="flex flex-col gap-3 border-t border-[#d7d9ce] py-6 text-sm text-[#65705f] sm:flex-row sm:items-center sm:justify-between">
+          <p>STREAK non-custodial USDC payment links.</p>
+          <nav className="flex flex-wrap gap-4">
+            <Link className="underline" href="/legal/terms">
+              Terms
+            </Link>
+            <Link className="underline" href="/legal/privacy">
+              Privacy
+            </Link>
+            <Link className="underline" href="/legal/commercial">
+              Commercial disclosure
+            </Link>
+            <Link className="underline" href="/legal/usdc-risk">
+              USDC risk notice
+            </Link>
+          </nav>
+        </footer>
       </section>
     </main>
   );

@@ -101,6 +101,35 @@ export async function createProduct(formData: FormData) {
   redirect("/admin?success=product-created");
 }
 
+export async function updateProduct(formData: FormData) {
+  const { supabase } = await requireUser();
+  const productId = String(formData.get("product_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const priceUsdc = Number(formData.get("price_usdc") ?? 0);
+
+  if (!productId || !name || !Number.isFinite(priceUsdc) || priceUsdc <= 0) {
+    redirect("/admin?error=product-update-required");
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      name,
+      description: description || null,
+      price_usdc: priceUsdc,
+    })
+    .eq("id", productId);
+
+  if (error) {
+    console.error("updateProduct failed", error);
+    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin?success=product-updated");
+}
+
 export async function toggleProduct(formData: FormData) {
   const { supabase } = await requireUser();
   const productId = String(formData.get("product_id") ?? "");
