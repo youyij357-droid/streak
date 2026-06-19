@@ -4,15 +4,10 @@ on public.products for select
 using (active = true);
 
 drop policy if exists "Anyone can read shops for active products" on public.shops;
-create policy "Anyone can read shops for active products"
+drop policy if exists "Anyone can read public shop payment details" on public.shops;
+create policy "Anyone can read public shop payment details"
 on public.shops for select
-using (
-  exists (
-    select 1 from public.products
-    where products.shop_id = shops.id
-      and products.active = true
-  )
-);
+using (true);
 
 drop policy if exists "Anyone can create pending orders" on public.orders;
 create policy "Anyone can create pending orders"
