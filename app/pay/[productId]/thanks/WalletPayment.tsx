@@ -12,6 +12,13 @@ declare global {
 
 const polygonChainId = "0x89";
 const usdcContract = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
+const polygonParams = {
+  chainId: polygonChainId,
+  chainName: "Polygon Mainnet",
+  nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 },
+  rpcUrls: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com"],
+  blockExplorerUrls: ["https://polygonscan.com"],
+};
 
 function encodeTransfer(to: string, amountUsdc: string) {
   const cleanTo = to.replace(/^0x/i, "").padStart(64, "0");
@@ -51,10 +58,18 @@ export function WalletPayment({
       return;
     }
 
-    const accounts = (await window.ethereum.request({
-      method: "eth_requestAccounts",
-    })) as string[];
-    setAccount(accounts[0] ?? "");
+    try {
+      await switchToPolygon();
+      const accounts = (await window.ethereum.request({
+        method: "eth_requestAccounts",
+      })) as string[];
+      setAccount(accounts[0] ?? "");
+    } catch (error) {
+      console.error("connectWallet failed", error);
+      setMessage(
+        "Wallet connection failed. Open MetaMask, switch to Polygon Mainnet, then try again.",
+      );
+    }
   }
 
   async function switchToPolygon() {
@@ -69,20 +84,23 @@ export function WalletPayment({
         params: [{ chainId: polygonChainId }],
       });
       setMessage("Polygon network is selected.");
-    } catch {
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId: polygonChainId,
-            chainName: "Polygon Mainnet",
-            nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 },
-            rpcUrls: ["https://polygon-rpc.com"],
-            blockExplorerUrls: ["https://polygonscan.com"],
-          },
-        ],
-      });
-      setMessage("Polygon network was added.");
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? error.code : null;
+
+      if (code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [polygonParams],
+        });
+        setMessage("Polygon network was added.");
+        return;
+      }
+
+      console.error("switchToPolygon failed", error);
+      setMessage(
+        "Could not switch networks. Open MetaMask and select Polygon Mainnet manually.",
+      );
+      throw error;
     }
   }
 
