@@ -26,3 +26,7 @@ export function polygonScanTxUrl(txHash: string | null) {
 export function isTransactionHash(value: string | null) {
   return /^0x[a-fA-F0-9]{64}$/.test(value ?? "");
 }
+
+export function isWalletAddress(value: string | null) {
+  return /^0x[a-fA-F0-9]{40}$/.test(value ?? "");
+}

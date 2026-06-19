@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { formatUsdc, isTransactionHash, polygonScanTxUrl } from "@/lib/format";
+import {
+  formatUsdc,
+  isTransactionHash,
+  isWalletAddress,
+  polygonScanTxUrl,
+} from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOutAdmin } from "./login/actions";
@@ -370,7 +375,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       </a>
                     ) : order.payment_tx_hash ? (
                       <p className="text-xs font-medium text-[#8c2f16]">
-                        Saved value is not a valid transaction hash.
+                        {isWalletAddress(order.payment_tx_hash)
+                          ? "This is a wallet address. Clear it, then save the actual transaction hash after payment."
+                          : "Saved value is not a valid transaction hash."}
                       </p>
                     ) : null}
                     <button className="h-10 rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white">
