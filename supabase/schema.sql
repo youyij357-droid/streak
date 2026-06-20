@@ -6,6 +6,7 @@ create table if not exists public.shops (
   name text not null,
   slug text not null unique,
   wallet_address text,
+  jpy_per_usdc numeric(18, 6) not null default 160 check (jpy_per_usdc > 0),
   payment_network text not null default 'polygon_mainnet' check (
     payment_network in ('polygon_mainnet', 'polygon_amoy')
   ),
@@ -18,6 +19,7 @@ create table if not exists public.products (
   shop_id uuid not null references public.shops(id) on delete cascade,
   name text not null,
   description text,
+  price_jpy numeric(18, 0) not null check (price_jpy >= 0),
   price_usdc numeric(18, 6) not null check (price_usdc >= 0),
   active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -29,6 +31,7 @@ create table if not exists public.orders (
   shop_id uuid not null references public.shops(id) on delete cascade,
   product_id uuid references public.products(id) on delete set null,
   buyer_email text,
+  amount_jpy numeric(18, 0),
   amount_usdc numeric(18, 6) not null check (amount_usdc >= 0),
   status text not null default 'pending' check (
     status in ('pending', 'paid', 'expired', 'cancelled')
@@ -166,6 +169,7 @@ with check (
     where products.id = orders.product_id
       and products.shop_id = orders.shop_id
       and products.active = true
+      and products.price_jpy = orders.amount_jpy
       and products.price_usdc = orders.amount_usdc
   )
 );

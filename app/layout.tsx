@@ -13,9 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "STREAK | USDC Payment Links",
-  description:
-    "STREAK is a Web3 payment infrastructure for issuing Polygon USDC payment links.",
+  title: "STREAK | USDC決済リンク",
+  description: "STREAKは円建て商品登録とUSDC決済に対応した決済リンク管理ツールです。",
 };
 
 export default function RootLayout({

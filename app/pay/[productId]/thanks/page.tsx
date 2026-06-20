@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatUsdc, isTransactionHash } from "@/lib/format";
+import { formatJpy, formatUsdc, isTransactionHash } from "@/lib/format";
 import { getPaymentNetwork, paymentNetworkExplorerTxUrl } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { submitPaymentTxHash } from "./actions";
@@ -18,16 +18,22 @@ type ThanksPageProps = {
 };
 
 const errorMessages: Record<string, string> = {
-  "invalid-tx-hash":
-    "Transaction hash must start with 0x and contain 64 hexadecimal characters. Do not paste the merchant wallet address here.",
-  "merchant-wallet-missing": "The merchant wallet is not set. Please contact the merchant.",
-  "order-not-found": "Order was not found. Please create a new order.",
-  "tx-failed": "This transaction failed on-chain. Please submit a successful transaction.",
-  "tx-hash-required": "Enter the transaction hash from MetaMask after submitting payment.",
+  "invalid-tx-hash": "Tx hashは0xから始まる64文字の英数字です。",
+  "merchant-wallet-missing": "受取ウォレットが設定されていません。販売者へお問い合わせください。",
+  "order-not-found": "注文が見つかりません。もう一度注文を作成してください。",
+  "tx-failed": "この取引はブロックチェーン上で失敗しています。",
+  "tx-hash-required": "MetaMaskで送金後に発行されるTx hashを入力してください。",
   "tx-not-found-or-pending":
-    "This transaction was not found on the selected network yet. Check the network or wait a few minutes and try again.",
+    "選択中のネットワークでこの取引が見つかりません。ネットワークを確認するか、数分待って再度お試しください。",
   "tx-usdc-transfer-not-found":
-    "This transaction does not match the order. Confirm the network, recipient wallet, token, and amount.",
+    "この取引は注文の送金先・トークン・金額と一致しません。",
+};
+
+const statusLabels: Record<string, string> = {
+  cancelled: "キャンセル",
+  expired: "期限切れ",
+  paid: "支払い済み",
+  pending: "未払い",
 };
 
 export default async function ThanksPage({ params, searchParams }: ThanksPageProps) {
@@ -61,35 +67,33 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
             STREAK
           </Link>
           <Link className="text-sm font-semibold underline" href={`/pay/${productId}`}>
-            Back to product
+            商品ページへ戻る
           </Link>
         </header>
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_420px] lg:items-start">
           <section>
             <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
-              {isPaid ? "Payment complete" : "Payment required"}
+              {isPaid ? "支払い完了" : "支払い待ち"}
             </p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-              {isPaid ? "Payment verified" : "Complete payment with your wallet"}
+              {isPaid ? "支払いが確認されました" : "ウォレットで支払いを完了してください"}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
               {isPaid
-                ? "The transaction was verified on-chain and this order is marked as paid."
-                : `Send ${formatUsdc(order.amount_usdc)} ${paymentNetwork.label} to the merchant wallet. STREAK verifies the transaction before marking the order as paid.`}
+                ? "ブロックチェーン上で取引を確認し、この注文を支払い済みにしました。"
+                : `${formatJpy(order.amount_jpy ?? 0)}を、${paymentNetwork.label}で支払います。送金後、STREAKが取引内容を自動確認します。`}
             </p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {[
-                ["1", "Order created", true],
-                ["2", "Wallet payment", isPaid],
-                ["3", "Verified", isPaid],
+                ["1", "注文作成", true],
+                ["2", "ウォレット支払い", isPaid],
+                ["3", "自動確認", isPaid],
               ].map(([number, label, done]) => (
                 <div
                   className={`border p-4 ${
-                    done
-                      ? "border-[#b8d8b5] bg-[#f1faef]"
-                      : "border-[#d7d9ce] bg-white"
+                    done ? "border-[#b8d8b5] bg-[#f1faef]" : "border-[#d7d9ce] bg-white"
                   }`}
                   key={String(label)}
                 >
@@ -101,35 +105,38 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
           </section>
 
           <aside className="border border-[#d7d9ce] bg-white p-6">
-            <h2 className="text-2xl font-semibold">Order summary</h2>
+            <h2 className="text-2xl font-semibold">注文内容</h2>
             <dl className="mt-5 grid gap-4 text-sm">
               <div className="border-b border-[#edf0e8] pb-3">
-                <dt className="text-[#65705f]">Product</dt>
+                <dt className="text-[#65705f]">商品</dt>
                 <dd className="mt-1 font-medium">{order.products?.name}</dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-[#edf0e8] pb-3">
-                <dt className="text-[#65705f]">Status</dt>
-                <dd className="font-semibold">{order.status}</dd>
+                <dt className="text-[#65705f]">ステータス</dt>
+                <dd className="font-semibold">{statusLabels[order.status] ?? order.status}</dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-[#edf0e8] pb-3">
-                <dt className="text-[#65705f]">Network</dt>
+                <dt className="text-[#65705f]">ネットワーク</dt>
                 <dd className="text-right font-medium">{paymentNetwork.label}</dd>
               </div>
               <div className="border-b border-[#edf0e8] pb-3">
-                <dt className="text-[#65705f]">Merchant wallet</dt>
+                <dt className="text-[#65705f]">受取ウォレット</dt>
                 <dd className="mt-1 break-all font-mono text-xs">
-                  {order.shops?.wallet_address || "Merchant wallet not set yet"}
+                  {order.shops?.wallet_address || "受取ウォレット未設定"}
                 </dd>
               </div>
               <div className="flex items-end justify-between gap-4">
-                <dt className="text-[#65705f]">Total</dt>
-                <dd className="text-3xl font-semibold">
-                  {formatUsdc(order.amount_usdc)} USDC
+                <dt className="text-[#65705f]">支払い金額</dt>
+                <dd className="text-right">
+                  <p className="text-3xl font-semibold">{formatJpy(order.amount_jpy ?? 0)}</p>
+                  <p className="mt-1 text-sm text-[#65705f]">
+                    {formatUsdc(order.amount_usdc)} USDC
+                  </p>
                 </dd>
               </div>
             </dl>
             <p className="mt-5 break-all font-mono text-xs text-[#65705f]">
-              Order ID: {order.id}
+              注文ID: {order.id}
             </p>
           </aside>
         </div>
@@ -142,20 +149,20 @@ export default async function ThanksPage({ params, searchParams }: ThanksPagePro
         {success ? (
           <p className="mt-4 border border-[#b8d8b5] bg-[#f1faef] p-4 text-sm font-medium text-[#176b32]">
             {success === "payment-verified"
-              ? "Payment was verified on-chain and the order was marked as paid."
-              : "Transaction hash was saved. The merchant will confirm payment."}
+              ? "支払いをブロックチェーン上で確認し、注文を支払い済みにしました。"
+              : "Tx hashを保存しました。販売者が支払いを確認します。"}
           </p>
         ) : null}
 
         {isPaid ? (
           <section className="mt-6 border border-[#d7d9ce] bg-white p-6">
-            <h2 className="text-xl font-semibold">Verified transaction</h2>
+            <h2 className="text-xl font-semibold">確認済みの取引</h2>
             {isTransactionHash(order.payment_tx_hash) ? (
               <a
                 className="mt-4 inline-flex h-11 items-center rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white"
                 href={paymentNetworkExplorerTxUrl(order.payment_network, order.payment_tx_hash)}
               >
-                View on explorer
+                エクスプローラーで確認
               </a>
             ) : null}
           </section>

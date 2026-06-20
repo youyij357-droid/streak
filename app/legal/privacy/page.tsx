@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy | STREAK",
+  title: "プライバシーポリシー | STREAK",
 };
 
 export default function PrivacyPage() {
@@ -11,21 +11,18 @@ export default function PrivacyPage() {
         <Link className="text-xl font-semibold tracking-[0.18em]" href="/">
           STREAK
         </Link>
-        <h1 className="mt-10 text-4xl font-semibold">Privacy Policy</h1>
+        <h1 className="mt-10 text-4xl font-semibold">プライバシーポリシー</h1>
         <div className="mt-6 grid gap-5 text-sm leading-7 text-[#4d5548]">
           <p>
-            STREAK stores account, shop, product, and order information needed
-            to operate payment links. Buyer email is optional and used for order
-            identification.
+            STREAKは、決済リンクの運用に必要なアカウント情報、店舗情報、商品情報、注文情報を保存します。
+            購入者メールアドレスは任意であり、注文識別のために利用されます。
           </p>
           <p>
-            Wallet addresses and transaction hashes are public blockchain data.
-            Do not enter unnecessary personal information into product,
-            order, or wallet fields.
+            ウォレットアドレスやTx hashは、ブロックチェーン上で公開される情報です。
+            商品、注文、ウォレット欄には不要な個人情報を入力しないでください。
           </p>
           <p>
-            Authentication and database storage are provided through Supabase.
-            Hosting is provided through Vercel.
+            認証とデータベース保存にはSupabase、ホスティングにはVercelを利用しています。
           </p>
         </div>
       </article>

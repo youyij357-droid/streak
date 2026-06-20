@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { signInAdmin } from "./actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { signInAdmin } from "./actions";
 
 export const metadata = {
-  title: "Admin Login | STREAK",
+  title: "管理者ログイン | STREAK",
 };
 
 type AdminLoginPageProps = {
@@ -14,14 +14,12 @@ type AdminLoginPageProps = {
 };
 
 const errorMessages: Record<string, string> = {
-  "supabase-env-missing": "Supabase environment variables are not set yet.",
-  "missing-credentials": "Enter both email and password.",
-  "invalid-login": "Email or password is incorrect.",
+  "invalid-login": "メールアドレスまたはパスワードが正しくありません。",
+  "missing-credentials": "メールアドレスとパスワードを入力してください。",
+  "supabase-env-missing": "Supabaseの環境変数がまだ設定されていません。",
 };
 
-export default async function AdminLoginPage({
-  searchParams,
-}: AdminLoginPageProps) {
+export default async function AdminLoginPage({ searchParams }: AdminLoginPageProps) {
   const params = await searchParams;
   const configured = isSupabaseConfigured();
   const errorMessage = params.error ? errorMessages[params.error] : null;
@@ -34,25 +32,23 @@ export default async function AdminLoginPage({
             STREAK
           </Link>
           <p className="mt-12 font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
-            Admin access
+            管理者ログイン
           </p>
           <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-            Supabase admin login is ready to connect.
+            商品登録、注文確認、決済設定を管理します。
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-[#4d5548]">
-            Add the Supabase URL and publishable key in Vercel, then create the
-            first admin user in Supabase Auth. This page will sign in with
-            Email/Password and route the session to the admin area.
+            Supabase Authに登録した管理者アカウントでログインしてください。
           </p>
         </div>
 
         <section className="border border-[#d7d9ce] bg-white p-6 shadow-[0_24px_80px_rgba(23,26,22,0.08)]">
           <div className="border-b border-[#e5e7dd] pb-5">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#65705f]">
-              Status
+              状態
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              {configured ? "Email login enabled" : "Supabase env pending"}
+              {configured ? "ログイン可能" : "Supabase設定待ち"}
             </h2>
           </div>
 
@@ -65,25 +61,25 @@ export default async function AdminLoginPage({
           <form action={signInAdmin} className="mt-6 grid gap-5">
             <input name="next" type="hidden" value={params.next ?? "/admin"} />
             <label className="grid gap-2 text-sm font-medium">
-              Email
+              メールアドレス
               <input
                 className="h-12 border border-[#c3c7b9] bg-[#fbfcf7] px-4 text-base outline-none transition focus:border-[#171a16]"
+                disabled={!configured}
                 name="email"
                 placeholder="admin@example.com"
-                type="email"
-                disabled={!configured}
                 required
+                type="email"
               />
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Password
+              パスワード
               <input
                 className="h-12 border border-[#c3c7b9] bg-[#fbfcf7] px-4 text-base outline-none transition focus:border-[#171a16]"
-                name="password"
-                placeholder="Password"
-                type="password"
                 disabled={!configured}
+                name="password"
+                placeholder="パスワード"
                 required
+                type="password"
               />
             </label>
             <button
@@ -95,17 +91,14 @@ export default async function AdminLoginPage({
               disabled={!configured}
               type="submit"
             >
-              {configured ? "Sign in" : "Set Supabase env first"}
+              {configured ? "ログイン" : "Supabase設定が必要です"}
             </button>
           </form>
 
           <div className="mt-6 grid gap-3 border-t border-[#e5e7dd] pt-5 text-sm text-[#4d5548]">
-            <p>
-              Required env: NEXT_PUBLIC_SUPABASE_URL and
-              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
-            </p>
+            <p>必要な環境変数: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</p>
             <Link className="font-semibold text-[#171a16] underline" href="/admin">
-              View admin readiness dashboard
+              管理画面へ
             </Link>
           </div>
         </section>

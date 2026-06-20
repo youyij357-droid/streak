@@ -9,10 +9,18 @@ export async function createOrder(formData: FormData) {
   const productId = String(formData.get("product_id") ?? "");
   const shopId = String(formData.get("shop_id") ?? "");
   const buyerEmail = String(formData.get("buyer_email") ?? "").trim();
+  const amountJpy = Number(formData.get("amount_jpy") ?? 0);
   const amountUsdc = Number(formData.get("amount_usdc") ?? 0);
   const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
 
-  if (!productId || !shopId || !Number.isFinite(amountUsdc) || amountUsdc <= 0) {
+  if (
+    !productId ||
+    !shopId ||
+    !Number.isFinite(amountJpy) ||
+    amountJpy <= 0 ||
+    !Number.isFinite(amountUsdc) ||
+    amountUsdc <= 0
+  ) {
     redirect(`/pay/${productId}?error=invalid-order`);
   }
 
@@ -22,6 +30,7 @@ export async function createOrder(formData: FormData) {
       shop_id: shopId,
       product_id: productId,
       buyer_email: buyerEmail || null,
+      amount_jpy: amountJpy,
       amount_usdc: amountUsdc,
       payment_network: paymentNetwork,
       status: "pending",

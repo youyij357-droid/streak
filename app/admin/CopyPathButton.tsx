@@ -7,7 +7,7 @@ type CopyPathButtonProps = {
   path: string;
 };
 
-export function CopyPathButton({ label = "Copy link", path }: CopyPathButtonProps) {
+export function CopyPathButton({ label = "リンクをコピー", path }: CopyPathButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function copyLink() {
@@ -23,7 +23,7 @@ export function CopyPathButton({ label = "Copy link", path }: CopyPathButtonProp
       onClick={copyLink}
       type="button"
     >
-      {copied ? "Copied" : label}
+      {copied ? "コピーしました" : label}
     </button>
   );
 }

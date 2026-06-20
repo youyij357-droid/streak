@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { normalizePaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
-import { isTransactionHash, slugify } from "@/lib/format";
+import { calculateUsdcFromJpy, isTransactionHash, slugify } from "@/lib/format";
 import { verifyPaymentTx } from "@/lib/verify-payment";
 
 async function requireUser() {
@@ -54,8 +54,9 @@ export async function updateShop(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
   const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
+  const jpyPerUsdc = Number(formData.get("jpy_per_usdc") ?? 0);
 
-  if (!shopId || !name) {
+  if (!shopId || !name || !Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
     redirect("/admin?error=shop-update-required");
   }
 
@@ -65,12 +66,27 @@ export async function updateShop(formData: FormData) {
       name,
       wallet_address: walletAddress || null,
       payment_network: paymentNetwork,
+      jpy_per_usdc: jpyPerUsdc,
     })
     .eq("id", shopId);
 
   if (error) {
     console.error("updateShop failed", error);
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, price_jpy")
+    .eq("shop_id", shopId);
+
+  for (const product of products ?? []) {
+    await supabase
+      .from("products")
+      .update({
+        price_usdc: calculateUsdcFromJpy(Number(product.price_jpy ?? 0), jpyPerUsdc),
+      })
+      .eq("id", product.id);
   }
 
   revalidatePath("/admin");
@@ -82,17 +98,29 @@ export async function createProduct(formData: FormData) {
   const shopId = String(formData.get("shop_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const priceUsdc = Number(formData.get("price_usdc") ?? 0);
+  const priceJpy = Number(formData.get("price_jpy") ?? 0);
 
-  if (!shopId || !name || !Number.isFinite(priceUsdc) || priceUsdc <= 0) {
+  if (!shopId || !name || !Number.isFinite(priceJpy) || priceJpy <= 0) {
     redirect("/admin?error=product-required");
+  }
+
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("jpy_per_usdc")
+    .eq("id", shopId)
+    .single();
+  const jpyPerUsdc = Number(shop?.jpy_per_usdc ?? 0);
+
+  if (!Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
+    redirect("/admin?error=exchange-rate-required");
   }
 
   const { error } = await supabase.from("products").insert({
     shop_id: shopId,
     name,
     description: description || null,
-    price_usdc: priceUsdc,
+    price_jpy: priceJpy,
+    price_usdc: calculateUsdcFromJpy(priceJpy, jpyPerUsdc),
     active: true,
   });
 
@@ -110,10 +138,22 @@ export async function updateProduct(formData: FormData) {
   const productId = String(formData.get("product_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const priceUsdc = Number(formData.get("price_usdc") ?? 0);
+  const priceJpy = Number(formData.get("price_jpy") ?? 0);
 
-  if (!productId || !name || !Number.isFinite(priceUsdc) || priceUsdc <= 0) {
+  if (!productId || !name || !Number.isFinite(priceJpy) || priceJpy <= 0) {
     redirect("/admin?error=product-update-required");
+  }
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("shops(jpy_per_usdc)")
+    .eq("id", productId)
+    .single();
+  const shop = Array.isArray(product?.shops) ? product.shops[0] : product?.shops;
+  const jpyPerUsdc = Number(shop?.jpy_per_usdc ?? 0);
+
+  if (!Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
+    redirect("/admin?error=exchange-rate-required");
   }
 
   const { error } = await supabase
@@ -121,7 +161,8 @@ export async function updateProduct(formData: FormData) {
     .update({
       name,
       description: description || null,
-      price_usdc: priceUsdc,
+      price_jpy: priceJpy,
+      price_usdc: calculateUsdcFromJpy(priceJpy, jpyPerUsdc),
     })
     .eq("id", productId);
 

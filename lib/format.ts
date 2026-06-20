@@ -6,6 +6,23 @@ export function formatUsdc(value: number | string | null) {
   }).format(amount);
 }
 
+export function formatJpy(value: number | string | null) {
+  const amount = Number(value ?? 0);
+  return new Intl.NumberFormat("ja-JP", {
+    currency: "JPY",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(amount);
+}
+
+export function calculateUsdcFromJpy(priceJpy: number, jpyPerUsdc: number) {
+  if (!Number.isFinite(priceJpy) || !Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
+    return 0;
+  }
+
+  return Math.ceil((priceJpy / jpyPerUsdc) * 1000000) / 1000000;
+}
+
 export function slugify(value: string) {
   return value
     .trim()

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Commercial Disclosure | STREAK",
+  title: "特定商取引法に基づく表記 | STREAK",
 };
 
 export default function CommercialPage() {
@@ -11,17 +11,15 @@ export default function CommercialPage() {
         <Link className="text-xl font-semibold tracking-[0.18em]" href="/">
           STREAK
         </Link>
-        <h1 className="mt-10 text-4xl font-semibold">Commercial Disclosure</h1>
+        <h1 className="mt-10 text-4xl font-semibold">特定商取引法に基づく表記</h1>
         <div className="mt-6 grid gap-5 text-sm leading-7 text-[#4d5548]">
           <p>
-            Merchant name, seller information, delivery terms, refund policy,
-            and customer support contact should be provided by each merchant
-            before public sales begin.
+            販売者名、所在地、連絡先、販売価格、商品引渡時期、返品・キャンセル条件、
+            サポート窓口などは、各販売者が公開前に記載する必要があります。
           </p>
           <p>
-            This page is a placeholder for Japanese Specified Commercial
-            Transactions Act disclosure requirements and should be completed
-            before production commerce use.
+            このページはMVP検証用の仮表示です。実際に商品販売を開始する前に、
+            販売者情報と取引条件を確定し、法令に沿った内容へ更新してください。
           </p>
         </div>
       </article>
