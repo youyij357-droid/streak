@@ -65,6 +65,12 @@ export async function updateShop(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
   const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
+  const publicSitePublished = String(formData.get("public_site_published") ?? "") === "on";
+
+  const textValue = (key: string) => {
+    const value = String(formData.get(key) ?? "").trim();
+    return value || null;
+  };
 
   if (!shopId || !name) {
     redirect(`${next}?error=shop-update-required`);
@@ -84,6 +90,19 @@ export async function updateShop(formData: FormData) {
       wallet_address: walletAddress || null,
       payment_network: paymentNetwork,
       jpy_per_usdc: rate.jpyPerUsdc,
+      public_site_published: publicSitePublished,
+      public_site_headline: textValue("public_site_headline"),
+      public_site_description: textValue("public_site_description"),
+      support_email: textValue("support_email"),
+      support_hours: textValue("support_hours"),
+      company_name: textValue("company_name"),
+      representative_name: textValue("representative_name"),
+      business_address: textValue("business_address"),
+      sales_terms: textValue("sales_terms"),
+      refund_policy: textValue("refund_policy"),
+      delivery_timing: textValue("delivery_timing"),
+      accepted_payment_methods: textValue("accepted_payment_methods"),
+      review_notice: textValue("review_notice"),
     })
     .eq("id", shopId);
 
