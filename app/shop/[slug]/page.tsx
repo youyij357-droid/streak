@@ -100,9 +100,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
                   </div>
                   <Link
                     className="inline-flex h-12 items-center justify-center rounded-md bg-[#171a16] px-6 text-sm font-semibold text-white"
-                    href={`/pay/${product.id}`}
+                    href={`/product/${product.id}`}
                   >
-                    この商品を購入する
+                    商品詳細を見る
                   </Link>
                 </article>
               );

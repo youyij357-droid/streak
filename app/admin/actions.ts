@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getJpyPerUsdc } from "@/lib/exchange-rate";
 import { normalizePaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { calculateUsdcFromJpy, isTransactionHash, slugify } from "@/lib/format";
@@ -27,6 +28,7 @@ export async function createShop(formData: FormData) {
   const requestedSlug = String(formData.get("slug") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
   const slug = slugify(requestedSlug || name);
+  const rate = await getJpyPerUsdc();
 
   if (!name || !slug) {
     redirect("/admin?error=shop-required");
@@ -37,6 +39,7 @@ export async function createShop(formData: FormData) {
     name,
     slug,
     wallet_address: walletAddress || null,
+    jpy_per_usdc: rate.jpyPerUsdc,
   });
 
   if (error) {
@@ -54,11 +57,17 @@ export async function updateShop(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
   const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
-  const jpyPerUsdc = Number(formData.get("jpy_per_usdc") ?? 0);
 
-  if (!shopId || !name || !Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
+  if (!shopId || !name) {
     redirect("/admin?error=shop-update-required");
   }
+
+  const { data: currentShop } = await supabase
+    .from("shops")
+    .select("jpy_per_usdc")
+    .eq("id", shopId)
+    .single();
+  const rate = await getJpyPerUsdc(currentShop?.jpy_per_usdc);
 
   const { error } = await supabase
     .from("shops")
@@ -66,7 +75,7 @@ export async function updateShop(formData: FormData) {
       name,
       wallet_address: walletAddress || null,
       payment_network: paymentNetwork,
-      jpy_per_usdc: jpyPerUsdc,
+      jpy_per_usdc: rate.jpyPerUsdc,
     })
     .eq("id", shopId);
 
@@ -84,7 +93,7 @@ export async function updateShop(formData: FormData) {
     await supabase
       .from("products")
       .update({
-        price_usdc: calculateUsdcFromJpy(Number(product.price_jpy ?? 0), jpyPerUsdc),
+        price_usdc: calculateUsdcFromJpy(Number(product.price_jpy ?? 0), rate.jpyPerUsdc),
       })
       .eq("id", product.id);
   }
@@ -109,18 +118,14 @@ export async function createProduct(formData: FormData) {
     .select("jpy_per_usdc")
     .eq("id", shopId)
     .single();
-  const jpyPerUsdc = Number(shop?.jpy_per_usdc ?? 0);
-
-  if (!Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
-    redirect("/admin?error=exchange-rate-required");
-  }
+  const rate = await getJpyPerUsdc(shop?.jpy_per_usdc);
 
   const { error } = await supabase.from("products").insert({
     shop_id: shopId,
     name,
     description: description || null,
     price_jpy: priceJpy,
-    price_usdc: calculateUsdcFromJpy(priceJpy, jpyPerUsdc),
+    price_usdc: calculateUsdcFromJpy(priceJpy, rate.jpyPerUsdc),
     active: true,
   });
 
@@ -129,6 +134,7 @@ export async function createProduct(formData: FormData) {
     redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   }
 
+  await supabase.from("shops").update({ jpy_per_usdc: rate.jpyPerUsdc }).eq("id", shopId);
   revalidatePath("/admin");
   redirect("/admin?success=product-created");
 }
@@ -146,15 +152,11 @@ export async function updateProduct(formData: FormData) {
 
   const { data: product } = await supabase
     .from("products")
-    .select("shops(jpy_per_usdc)")
+    .select("shop_id, shops(jpy_per_usdc)")
     .eq("id", productId)
     .single();
   const shop = Array.isArray(product?.shops) ? product.shops[0] : product?.shops;
-  const jpyPerUsdc = Number(shop?.jpy_per_usdc ?? 0);
-
-  if (!Number.isFinite(jpyPerUsdc) || jpyPerUsdc <= 0) {
-    redirect("/admin?error=exchange-rate-required");
-  }
+  const rate = await getJpyPerUsdc(shop?.jpy_per_usdc);
 
   const { error } = await supabase
     .from("products")
@@ -162,7 +164,7 @@ export async function updateProduct(formData: FormData) {
       name,
       description: description || null,
       price_jpy: priceJpy,
-      price_usdc: calculateUsdcFromJpy(priceJpy, jpyPerUsdc),
+      price_usdc: calculateUsdcFromJpy(priceJpy, rate.jpyPerUsdc),
     })
     .eq("id", productId);
 
@@ -172,6 +174,9 @@ export async function updateProduct(formData: FormData) {
   }
 
   revalidatePath("/admin");
+  if (product?.shop_id) {
+    await supabase.from("shops").update({ jpy_per_usdc: rate.jpyPerUsdc }).eq("id", product.shop_id);
+  }
   redirect("/admin?success=product-updated");
 }
 

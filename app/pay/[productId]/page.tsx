@@ -4,6 +4,7 @@ import { formatJpy, formatUsdc } from "@/lib/format";
 import { getPaymentNetwork } from "@/lib/payment-networks";
 import { createClient } from "@/lib/supabase/server";
 import { createOrder } from "./actions";
+import { SubmitOrderButton } from "./SubmitOrderButton";
 
 type PayPageProps = {
   params: Promise<{
@@ -150,9 +151,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
                   type="email"
                 />
               </label>
-              <button className="h-12 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
-                注文を作成して支払いへ進む
-              </button>
+              <SubmitOrderButton />
             </form>
           </section>
         </div>

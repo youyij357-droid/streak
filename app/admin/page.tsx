@@ -111,6 +111,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const paidTotal = paidOrders.reduce((sum, order) => sum + Number(order.amount_usdc ?? 0), 0);
   const activeNetwork = getPaymentNetwork(activeShop?.payment_network);
   const jpyPerUsdc = Number(activeShop?.jpy_per_usdc ?? 160);
+  const recentOrders = [...orders].reverse().slice(-8);
+  const maxRecentAmount = Math.max(...recentOrders.map((order) => Number(order.amount_usdc ?? 0)), 1);
 
   return (
     <main className="min-h-screen bg-[#f6f8fa] text-[#1f2328]">
@@ -202,7 +204,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 ["売上", `${formatUsdc(paidTotal)} USDC`, `${paidOrders.length}件の支払い済み注文`],
                 ["未払い注文", String(pendingOrders.length), "確認待ちの注文"],
                 ["商品", String(products.length), "公開/非公開の商品数"],
-                ["換算レート", `1 USDC = ${formatJpy(jpyPerUsdc)}`, activeNetwork.modeLabel],
+                ["自動換算レート", `1 USDC = ${formatJpy(jpyPerUsdc)}`, activeNetwork.modeLabel],
               ].map(([label, value, note]) => (
                 <article className="rounded-lg border border-[#d8dee4] bg-white p-5" key={label}>
                   <p className="text-sm font-medium text-[#656d76]">{label}</p>
@@ -210,6 +212,69 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <p className="mt-2 text-xs text-[#656d76]">{note}</p>
                 </article>
               ))}
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+              <article className="rounded-lg border border-[#d8dee4] bg-white p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-semibold">売上の推移</h2>
+                    <p className="mt-1 text-sm text-[#656d76]">直近注文のUSDC金額を表示します。</p>
+                  </div>
+                  <span className="rounded-full bg-[#e9f8ef] px-2.5 py-1 text-xs font-semibold text-[#176b32]">
+                    {formatUsdc(paidTotal)} USDC
+                  </span>
+                </div>
+                <div className="mt-6 flex h-36 items-end gap-2">
+                  {recentOrders.length ? (
+                    recentOrders.map((order, index) => {
+                      const amount = Number(order.amount_usdc ?? 0);
+                      const height = Math.max(8, Math.round((amount / maxRecentAmount) * 100));
+
+                      return (
+                        <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={order.id ?? index}>
+                          <div
+                            className={`w-full rounded-t-md ${
+                              order.status === "paid" ? "bg-[#635bff]" : "bg-[#c9d1d9]"
+                            }`}
+                            style={{ height: `${height}%` }}
+                          />
+                          <span className="truncate text-[10px] text-[#656d76]">{statusLabels[order.status] ?? order.status}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-md bg-[#f6f8fa] text-sm text-[#656d76]">
+                      注文データはまだありません。
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="rounded-lg border border-[#d8dee4] bg-white p-5">
+                <h2 className="text-base font-semibold">注文ステータス</h2>
+                <div className="mt-5 grid gap-3">
+                  {[
+                    ["支払い済み", paidOrders.length, "bg-[#176b32]"],
+                    ["未払い", pendingOrders.length, "bg-[#bf8700]"],
+                    ["その他", Math.max(orders.length - paidOrders.length - pendingOrders.length, 0), "bg-[#656d76]"],
+                  ].map(([label, count, color]) => {
+                    const width = orders.length ? Math.max(6, (Number(count) / orders.length) * 100) : 0;
+
+                    return (
+                      <div key={String(label)}>
+                        <div className="mb-1 flex justify-between text-xs text-[#656d76]">
+                          <span>{label}</span>
+                          <span>{count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[#eef1f4]">
+                          <div className={`h-2 rounded-full ${color}`} style={{ width: `${width}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
@@ -238,6 +303,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       </div>
                       {products.map((product) => {
                         const paymentPath = `/pay/${product.id}`;
+                        const productPath = `/product/${product.id}`;
                         const displayPriceJpy = Number(
                           product.price_jpy ??
                             Math.round(Number(product.price_usdc ?? 0) * jpyPerUsdc),
@@ -288,15 +354,21 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                 {product.active ? "公開中" : "非公開"}
                               </span>
                               <div className="grid gap-2">
-                                <p className="truncate font-mono text-xs text-[#59636e]">{paymentPath}</p>
+                                <p className="truncate font-mono text-xs text-[#59636e]">{productPath}</p>
                                 <div className="flex flex-wrap gap-2">
+                                  <Link
+                                    className="inline-flex h-9 items-center rounded-md border border-[#d8dee4] px-3 text-xs font-semibold hover:bg-[#f6f8fa]"
+                                    href={productPath}
+                                  >
+                                    商品
+                                  </Link>
                                   <Link
                                     className="inline-flex h-9 items-center rounded-md border border-[#d8dee4] px-3 text-xs font-semibold hover:bg-[#f6f8fa]"
                                     href={paymentPath}
                                   >
-                                    開く
+                                    決済
                                   </Link>
-                                  <CopyPathButton label="コピー" path={paymentPath} />
+                                  <CopyPathButton label="コピー" path={productPath} />
                                 </div>
                               </div>
                               <button className="h-9 rounded-md bg-[#635bff] px-3 text-xs font-semibold text-white xl:justify-self-end">
@@ -471,18 +543,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               <option value="polygon_amoy">テスト - Polygon Amoy USDC</option>
                             </select>
                           </label>
-                          <label className="grid gap-2 text-sm font-medium">
-                            為替レート（1 USDC = 何円）
-                            <input
-                              className={fieldClassName}
-                              defaultValue={activeShop.jpy_per_usdc ?? 160}
-                              min="1"
-                              name="jpy_per_usdc"
-                              step="0.000001"
-                              type="number"
-                              required
-                            />
-                          </label>
+                          <div className="rounded-md border border-[#d8dee4] bg-[#f6f8fa] p-3">
+                            <p className="text-xs font-medium text-[#656d76]">自動換算レート</p>
+                            <p className="mt-1 text-sm font-semibold">1 USDC = {formatJpy(jpyPerUsdc)}</p>
+                            <p className="mt-1 text-xs text-[#656d76]">
+                              商品作成・更新時にSTREAK側で自動取得します。
+                            </p>
+                          </div>
                         </section>
 
                         <section className="grid gap-3 border-t border-[#edf0f2] pt-5">
