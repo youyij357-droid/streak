@@ -403,71 +403,124 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               </div>
 
               <aside className="grid gap-6 xl:sticky xl:top-24 xl:self-start">
-                <section className="rounded-lg border border-[#d8dee4] bg-white" id="settings">
+                <section className="overflow-hidden rounded-lg border border-[#d8dee4] bg-white" id="settings">
                   <div className="border-b border-[#d8dee4] px-5 py-4">
                     <h2 className="text-base font-semibold">店舗設定</h2>
-                    <p className="mt-1 text-sm text-[#656d76]">決済に使う基本情報です。</p>
+                    <p className="mt-1 text-sm text-[#656d76]">公開ページとUSDC決済に使う設定です。</p>
                   </div>
                   {activeShop ? (
-                    <form action={updateShop} className="grid gap-4 p-5">
+                    <form action={updateShop}>
                       <input name="shop_id" type="hidden" value={activeShop.id} />
-                      <label className="grid gap-2 text-sm font-medium">
-                        店舗名
-                        <input className={fieldClassName} defaultValue={activeShop.name} name="name" required />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        受取ウォレット
-                        <input
-                          className={fieldClassName}
-                          defaultValue={activeShop.wallet_address ?? ""}
-                          name="wallet_address"
-                          placeholder="0x..."
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        決済ネットワーク
-                        <select
-                          className={fieldClassName}
-                          defaultValue={activeShop.payment_network ?? "polygon_mainnet"}
-                          name="payment_network"
-                        >
-                          <option value="polygon_mainnet">本番 - Polygon USDC</option>
-                          <option value="polygon_amoy">テスト - Polygon Amoy USDC</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        為替レート（1 USDC = 何円）
-                        <input
-                          className={fieldClassName}
-                          defaultValue={activeShop.jpy_per_usdc ?? 160}
-                          min="1"
-                          name="jpy_per_usdc"
-                          step="0.000001"
-                          type="number"
-                          required
-                        />
-                      </label>
-                      <p className="rounded-md bg-[#f6f8fa] p-3 text-sm text-[#656d76]">
-                        公開ショップID: <span className="font-mono">{activeShop.slug}</span>
-                      </p>
-                      <button className="h-10 rounded-md bg-[#635bff] px-4 text-sm font-semibold text-white">
-                        店舗設定を保存
-                      </button>
+                      <div className="border-b border-[#edf0f2] bg-[#fbfcfd] px-5 py-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">{activeShop.name}</p>
+                            <p className="mt-1 break-all font-mono text-xs text-[#656d76]">
+                              /shop/{activeShop.slug}
+                            </p>
+                          </div>
+                          <span className="w-fit rounded-full bg-[#f0f3ff] px-2.5 py-1 text-xs font-semibold text-[#3431a8]">
+                            {activeNetwork.modeLabel}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Link
+                            className="inline-flex h-9 items-center rounded-md border border-[#d8dee4] bg-white px-3 text-xs font-semibold hover:bg-[#f6f8fa]"
+                            href={`/shop/${activeShop.slug}`}
+                          >
+                            公開ページを開く
+                          </Link>
+                          <CopyPathButton label="公開URLをコピー" path={`/shop/${activeShop.slug}`} />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-5 p-5">
+                        <section className="grid gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold">基本情報</h3>
+                            <p className="mt-1 text-xs text-[#656d76]">購入者に表示される店舗名です。</p>
+                          </div>
+                          <label className="grid gap-2 text-sm font-medium">
+                            店舗名
+                            <input className={fieldClassName} defaultValue={activeShop.name} name="name" required />
+                          </label>
+                        </section>
+
+                        <section className="grid gap-3 border-t border-[#edf0f2] pt-5">
+                          <div>
+                            <h3 className="text-sm font-semibold">決済設定</h3>
+                            <p className="mt-1 text-xs text-[#656d76]">受取先、ネットワーク、円からUSDCへの換算を設定します。</p>
+                          </div>
+                          <label className="grid gap-2 text-sm font-medium">
+                            受取ウォレット
+                            <input
+                              className={fieldClassName}
+                              defaultValue={activeShop.wallet_address ?? ""}
+                              name="wallet_address"
+                              placeholder="0x..."
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm font-medium">
+                            決済ネットワーク
+                            <select
+                              className={fieldClassName}
+                              defaultValue={activeShop.payment_network ?? "polygon_mainnet"}
+                              name="payment_network"
+                            >
+                              <option value="polygon_mainnet">本番 - Polygon USDC</option>
+                              <option value="polygon_amoy">テスト - Polygon Amoy USDC</option>
+                            </select>
+                          </label>
+                          <label className="grid gap-2 text-sm font-medium">
+                            為替レート（1 USDC = 何円）
+                            <input
+                              className={fieldClassName}
+                              defaultValue={activeShop.jpy_per_usdc ?? 160}
+                              min="1"
+                              name="jpy_per_usdc"
+                              step="0.000001"
+                              type="number"
+                              required
+                            />
+                          </label>
+                        </section>
+
+                        <section className="grid gap-3 border-t border-[#edf0f2] pt-5">
+                          <div>
+                            <h3 className="text-sm font-semibold">公開情報</h3>
+                            <p className="mt-1 text-xs text-[#656d76]">このIDから公開ショップURLが作られます。</p>
+                          </div>
+                          <div className="rounded-md border border-[#d8dee4] bg-[#f6f8fa] p-3">
+                            <p className="text-xs font-medium text-[#656d76]">公開ショップID</p>
+                            <p className="mt-1 break-all font-mono text-sm">{activeShop.slug}</p>
+                          </div>
+                        </section>
+
+                        <button className="h-10 rounded-md bg-[#635bff] px-4 text-sm font-semibold text-white">
+                          店舗設定を保存
+                        </button>
+                      </div>
                     </form>
                   ) : (
-                    <form action={createShop} className="grid gap-4 p-5">
-                      <label className="grid gap-2 text-sm font-medium">
-                        店舗名
-                        <input className={fieldClassName} name="name" placeholder="STREAK demo shop" required />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        公開ショップID
-                        <input className={fieldClassName} name="slug" placeholder="streak-demo" />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        受取ウォレット
-                        <input className={fieldClassName} name="wallet_address" placeholder="0x..." />
-                      </label>
+                    <form action={createShop} className="grid gap-5 p-5">
+                      <section className="grid gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold">店舗を作成</h3>
+                          <p className="mt-1 text-xs text-[#656d76]">最初に公開ページと受取ウォレットを設定します。</p>
+                        </div>
+                        <label className="grid gap-2 text-sm font-medium">
+                          店舗名
+                          <input className={fieldClassName} name="name" placeholder="STREAK demo shop" required />
+                        </label>
+                        <label className="grid gap-2 text-sm font-medium">
+                          公開ショップID
+                          <input className={fieldClassName} name="slug" placeholder="streak-demo" />
+                        </label>
+                        <label className="grid gap-2 text-sm font-medium">
+                          受取ウォレット
+                          <input className={fieldClassName} name="wallet_address" placeholder="0x..." />
+                        </label>
+                      </section>
                       <button className="h-10 rounded-md bg-[#635bff] px-4 text-sm font-semibold text-white">
                         店舗を作成
                       </button>
