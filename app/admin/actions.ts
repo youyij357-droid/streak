@@ -22,8 +22,14 @@ async function requireUser() {
   return { supabase, user };
 }
 
+function redirectTarget(formData: FormData, fallback = "/admin") {
+  const next = String(formData.get("next") ?? "").trim();
+  return next.startsWith("/admin") ? next : fallback;
+}
+
 export async function createShop(formData: FormData) {
   const { supabase, user } = await requireUser();
+  const next = redirectTarget(formData, "/admin/settings");
   const name = String(formData.get("name") ?? "").trim();
   const requestedSlug = String(formData.get("slug") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
@@ -31,7 +37,7 @@ export async function createShop(formData: FormData) {
   const rate = await getJpyPerUsdc();
 
   if (!name || !slug) {
-    redirect("/admin?error=shop-required");
+    redirect(`${next}?error=shop-required`);
   }
 
   const { error } = await supabase.from("shops").insert({
@@ -44,22 +50,24 @@ export async function createShop(formData: FormData) {
 
   if (error) {
     console.error("createShop failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin?success=shop-created");
+  revalidatePath("/admin/settings");
+  redirect(`${next}?success=shop-created`);
 }
 
 export async function updateShop(formData: FormData) {
   const { supabase } = await requireUser();
+  const next = redirectTarget(formData, "/admin/settings");
   const shopId = String(formData.get("shop_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const walletAddress = String(formData.get("wallet_address") ?? "").trim();
   const paymentNetwork = normalizePaymentNetwork(String(formData.get("payment_network") ?? ""));
 
   if (!shopId || !name) {
-    redirect("/admin?error=shop-update-required");
+    redirect(`${next}?error=shop-update-required`);
   }
 
   const { data: currentShop } = await supabase
@@ -81,7 +89,7 @@ export async function updateShop(formData: FormData) {
 
   if (error) {
     console.error("updateShop failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   const { data: products } = await supabase
@@ -99,18 +107,21 @@ export async function updateShop(formData: FormData) {
   }
 
   revalidatePath("/admin");
-  redirect("/admin?success=shop-updated");
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/products");
+  redirect(`${next}?success=shop-updated`);
 }
 
 export async function createProduct(formData: FormData) {
   const { supabase } = await requireUser();
+  const next = redirectTarget(formData, "/admin/products");
   const shopId = String(formData.get("shop_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priceJpy = Number(formData.get("price_jpy") ?? 0);
 
   if (!shopId || !name || !Number.isFinite(priceJpy) || priceJpy <= 0) {
-    redirect("/admin?error=product-required");
+    redirect(`${next}?error=product-required`);
   }
 
   const { data: shop } = await supabase
@@ -131,23 +142,25 @@ export async function createProduct(formData: FormData) {
 
   if (error) {
     console.error("createProduct failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("shops").update({ jpy_per_usdc: rate.jpyPerUsdc }).eq("id", shopId);
   revalidatePath("/admin");
-  redirect("/admin?success=product-created");
+  revalidatePath("/admin/products");
+  redirect(`${next}?success=product-created`);
 }
 
 export async function updateProduct(formData: FormData) {
   const { supabase } = await requireUser();
+  const next = redirectTarget(formData, "/admin/products");
   const productId = String(formData.get("product_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priceJpy = Number(formData.get("price_jpy") ?? 0);
 
   if (!productId || !name || !Number.isFinite(priceJpy) || priceJpy <= 0) {
-    redirect("/admin?error=product-update-required");
+    redirect(`${next}?error=product-update-required`);
   }
 
   const { data: product } = await supabase
@@ -170,23 +183,25 @@ export async function updateProduct(formData: FormData) {
 
   if (error) {
     console.error("updateProduct failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/products");
   if (product?.shop_id) {
     await supabase.from("shops").update({ jpy_per_usdc: rate.jpyPerUsdc }).eq("id", product.shop_id);
   }
-  redirect("/admin?success=product-updated");
+  redirect(`${next}?success=product-updated`);
 }
 
 export async function toggleProduct(formData: FormData) {
   const { supabase } = await requireUser();
+  const next = redirectTarget(formData, "/admin/products");
   const productId = String(formData.get("product_id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
 
   if (!productId) {
-    redirect("/admin?error=product-id-required");
+    redirect(`${next}?error=product-id-required`);
   }
 
   const { error } = await supabase
@@ -196,25 +211,27 @@ export async function toggleProduct(formData: FormData) {
 
   if (error) {
     console.error("toggleProduct failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin?success=product-updated");
+  revalidatePath("/admin/products");
+  redirect(`${next}?success=product-updated`);
 }
 
 export async function updateOrderStatus(formData: FormData) {
   const { supabase } = await requireUser();
+  const next = redirectTarget(formData, "/admin");
   const orderId = String(formData.get("order_id") ?? "");
   const status = String(formData.get("status") ?? "");
   const paymentTxHash = String(formData.get("payment_tx_hash") ?? "").trim();
 
   if (!orderId || !["pending", "paid", "expired", "cancelled"].includes(status)) {
-    redirect("/admin?error=order-status-required");
+    redirect(`${next}?error=order-status-required`);
   }
 
   if (paymentTxHash && !isTransactionHash(paymentTxHash)) {
-    redirect("/admin?error=invalid-tx-hash");
+    redirect(`${next}?error=invalid-tx-hash`);
   }
 
   let nextStatus = status;
@@ -227,7 +244,7 @@ export async function updateOrderStatus(formData: FormData) {
       .single();
 
     if (orderError || !order) {
-      redirect("/admin?error=order-not-found");
+      redirect(`${next}?error=order-not-found`);
     }
 
     const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
@@ -239,7 +256,7 @@ export async function updateOrderStatus(formData: FormData) {
     });
 
     if (!verification.ok) {
-      redirect(`/admin?error=${verification.error}`);
+      redirect(`${next}?error=${verification.error}`);
     }
 
     nextStatus = "paid";
@@ -255,9 +272,9 @@ export async function updateOrderStatus(formData: FormData) {
 
   if (error) {
     console.error("updateOrderStatus failed", error);
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`${next}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/admin");
-  redirect("/admin?success=order-updated");
+  redirect(`${next}?success=order-updated`);
 }
