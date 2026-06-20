@@ -34,9 +34,9 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
   }
 
   const paymentNetwork = getPaymentNetwork(product.shops?.payment_network);
+  const jpyPerUsdc = Number(product.shops?.jpy_per_usdc ?? 160);
   const priceJpy = Number(
-    product.price_jpy ??
-      Math.round(Number(product.price_usdc ?? 0) * Number(product.shops?.jpy_per_usdc ?? 160)),
+    product.price_jpy ?? Math.round(Number(product.price_usdc ?? 0) * jpyPerUsdc),
   );
 
   return (
@@ -54,17 +54,17 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
         <div className="grid flex-1 gap-8 py-10 lg:grid-cols-[1fr_420px] lg:items-start">
           <section>
             <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#65705f]">
-              決済内容の確認
+              注文内容の確認
             </p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
               {product.name}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
-              {product.description || "注文内容を確認して、ウォレット決済へ進んでください。"}
+              {product.description || "内容を確認して、ウォレット決済へ進んでください。"}
             </p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {["注文を作成", "ウォレット接続", "支払いと自動確認"].map((step, index) => (
+              {["注文を作成", "ウォレットを接続", "USDCを送金"].map((step, index) => (
                 <div className="border border-[#d7d9ce] bg-white p-4" key={step}>
                   <p className="font-mono text-xs text-[#65705f]">0{index + 1}</p>
                   <p className="mt-3 text-sm font-semibold">{step}</p>
@@ -76,7 +76,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
               <p className="font-semibold text-[#171a16]">支払い前に確認してください</p>
               <p className="mt-2">
                 ネットワーク、受取ウォレット、換算後のUSDC金額を確認してください。
-                ブロックチェーン送金は、送信後に取り消せません。
+                ブロックチェーン送金は、実行後に取り消せません。
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
                 <Link className="font-semibold underline" href="/legal/usdc-risk">
@@ -105,7 +105,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
               <div className="flex justify-between gap-4 border-b border-[#edf0e8] pb-3">
                 <dt className="text-[#65705f]">換算レート</dt>
                 <dd className="text-right font-medium">
-                  1 USDC = {formatJpy(product.shops?.jpy_per_usdc ?? 160)}
+                  1 USDC = {formatJpy(jpyPerUsdc)}
                 </dd>
               </div>
               <div className="border-b border-[#edf0e8] pb-3">
@@ -119,7 +119,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
                 <dd className="text-right">
                   <p className="text-3xl font-semibold">{formatJpy(priceJpy)}</p>
                   <p className="mt-1 text-sm text-[#65705f]">
-                    決済額 {formatUsdc(product.price_usdc)} USDC
+                    USDC決済額: {formatUsdc(product.price_usdc)} USDC
                   </p>
                 </dd>
               </div>
@@ -151,7 +151,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
                 />
               </label>
               <button className="h-12 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
-                ウォレット決済へ進む
+                注文を作成して支払いへ進む
               </button>
             </form>
           </section>

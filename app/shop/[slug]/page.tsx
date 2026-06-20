@@ -61,8 +61,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
               {shop.name}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#4d5548]">
-              商品を選んで注文を作成し、ウォレットからUSDCでお支払いください。
-              代金は販売者のウォレットへ直接送金されます。
+              商品を選んで注文を作成し、ウォレットからUSDCで支払います。代金は販売者のウォレットへ直接送金されます。
             </p>
           </div>
           <aside className="border border-[#d7d9ce] bg-white p-5">
@@ -70,7 +69,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
             <p className="mt-2 text-lg font-semibold">{paymentNetwork.modeLabel}</p>
             <p className="mt-1 text-sm leading-6 text-[#4d5548]">{paymentNetwork.label}</p>
             <p className="mt-3 text-sm text-[#65705f]">
-              1 USDC = {formatJpy(jpyPerUsdc)}
+              換算レート: 1 USDC = {formatJpy(jpyPerUsdc)}
             </p>
           </aside>
         </section>
@@ -96,14 +95,14 @@ export default async function ShopPage({ params }: ShopPageProps) {
                     ) : null}
                     <p className="mt-3 text-lg font-semibold">{formatJpy(priceJpy)}</p>
                     <p className="mt-1 text-sm text-[#65705f]">
-                      決済額 {formatUsdc(product.price_usdc)} USDC
+                      USDC決済額: {formatUsdc(product.price_usdc)} USDC
                     </p>
                   </div>
                   <Link
                     className="inline-flex h-12 items-center justify-center rounded-md bg-[#171a16] px-6 text-sm font-semibold text-white"
                     href={`/pay/${product.id}`}
                   >
-                    注文へ進む
+                    この商品を購入する
                   </Link>
                 </article>
               );

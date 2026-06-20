@@ -42,8 +42,8 @@ const errorMessages: Record<string, string> = {
   "order-status-required": "注文ステータスを正しく選択してください。",
   "tx-failed": "この取引はブロックチェーン上で失敗しています。",
   "tx-not-found-or-pending":
-    "選択中のネットワークでこの取引が見つかりません。ネットワークを確認するか、数分待ってください。",
-  "tx-usdc-transfer-not-found": "この取引は注文の送金先・トークン・金額と一致しません。",
+    "選択中のネットワークでこの取引が見つかりません。ネットワークを確認するか、少し待ってから再確認してください。",
+  "tx-usdc-transfer-not-found": "この取引は注文の送金先、トークン、金額と一致しません。",
 };
 
 const statusLabels: Record<string, string> = {
@@ -82,7 +82,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         .select("*")
         .eq("shop_id", activeShop.id)
         .order("created_at", { ascending: false })
-    : { data: [] };
+    : { data: [], error: null };
   const products = productRows ?? [];
 
   const { data: orderRows, error: ordersError } = activeShop
@@ -92,7 +92,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         .eq("shop_id", activeShop.id)
         .order("created_at", { ascending: false })
         .limit(20)
-    : { data: [] };
+    : { data: [], error: null };
   const orders = orderRows ?? [];
 
   const paidTotal = orders
@@ -213,10 +213,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <p className="text-sm text-[#65705f]">
                   公開ショップID: <span className="font-mono">{activeShop.slug}</span>
                 </p>
-                <Link className="inline-flex text-sm font-semibold underline" href={`/shop/${activeShop.slug}`}>
-                  公開ショップを開く
-                </Link>
-                <CopyPathButton label="公開ショップリンクをコピー" path={`/shop/${activeShop.slug}`} />
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    className="inline-flex h-10 items-center rounded-md border border-[#c3c7b9] px-4 text-sm font-semibold"
+                    href={`/shop/${activeShop.slug}`}
+                  >
+                    公開ショップを開く
+                  </Link>
+                  <CopyPathButton label="公開ショップURLをコピー" path={`/shop/${activeShop.slug}`} />
+                </div>
                 <button className="h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white">
                   店舗設定を保存
                 </button>
@@ -287,7 +292,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   />
                 </label>
                 <p className="text-sm text-[#65705f] md:col-span-2">
-                  保存時に {formatJpy(jpyPerUsdc)} = 1 USDC として決済額を換算します。
+                  保存時に 1 USDC = {formatJpy(jpyPerUsdc)} としてUSDC決済額を自動計算します。
                 </p>
                 <button className="h-11 rounded-md bg-[#171a16] px-5 text-sm font-semibold text-white md:col-span-2">
                   商品を作成
@@ -302,77 +307,85 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <section className="grid gap-6 py-8 lg:grid-cols-[1fr_1fr]">
           <article className="border border-[#d7d9ce] bg-white p-6">
             <h2 className="text-2xl font-semibold">商品一覧</h2>
-            <div className="mt-5 grid gap-3">
+            <div className="mt-5 grid gap-4">
               {products.length ? (
-                products.map((product) => (
-                  <div className="grid gap-4 border border-[#edf0e8] p-4" key={product.id}>
-                    <form action={updateProduct} className="grid gap-3">
-                      <input name="product_id" type="hidden" value={product.id} />
-                      <label className="grid gap-2 text-sm font-medium">
-                        商品名
-                        <input
-                          className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
-                          defaultValue={product.name}
-                          name="name"
-                          required
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        価格（円）
-                        <input
-                          className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
-                          defaultValue={
-                            product.price_jpy ??
-                            Math.round(Number(product.price_usdc ?? 0) * jpyPerUsdc)
-                          }
-                          min="1"
-                          name="price_jpy"
-                          step="1"
-                          type="number"
-                          required
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium">
-                        商品説明
-                        <textarea
-                          className="min-h-20 border border-[#c3c7b9] p-3 outline-none focus:border-[#171a16]"
-                          defaultValue={product.description ?? ""}
-                          name="description"
-                        />
-                      </label>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="grid gap-2 text-sm text-[#65705f]">
-                          <span>{product.active ? "公開中" : "非公開"}</span>
-                          <span>
-                            {formatJpy(product.price_jpy ?? 0)} / 決済額{" "}
-                            {formatUsdc(product.price_usdc)} USDC
-                          </span>
+                products.map((product) => {
+                  const paymentPath = `/pay/${product.id}`;
+                  const displayPriceJpy = Number(
+                    product.price_jpy ?? Math.round(Number(product.price_usdc ?? 0) * jpyPerUsdc),
+                  );
+
+                  return (
+                    <div className="grid gap-4 border border-[#edf0e8] p-4" key={product.id}>
+                      <form action={updateProduct} className="grid gap-3">
+                        <input name="product_id" type="hidden" value={product.id} />
+                        <label className="grid gap-2 text-sm font-medium">
+                          商品名
+                          <input
+                            className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
+                            defaultValue={product.name}
+                            name="name"
+                            required
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm font-medium">
+                          価格（円）
+                          <input
+                            className="h-10 border border-[#c3c7b9] px-3 outline-none focus:border-[#171a16]"
+                            defaultValue={displayPriceJpy}
+                            min="1"
+                            name="price_jpy"
+                            step="1"
+                            type="number"
+                            required
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm font-medium">
+                          商品説明
+                          <textarea
+                            className="min-h-20 border border-[#c3c7b9] p-3 outline-none focus:border-[#171a16]"
+                            defaultValue={product.description ?? ""}
+                            name="description"
+                          />
+                        </label>
+                        <div className="grid gap-3 rounded-md bg-[#f7f8f3] p-4">
+                          <div className="grid gap-1 text-sm text-[#65705f]">
+                            <span>{product.active ? "公開中" : "非公開"}</span>
+                            <span>
+                              {formatJpy(displayPriceJpy)} / 決済額 {formatUsdc(product.price_usdc)} USDC
+                            </span>
+                            <span className="break-all font-mono text-xs text-[#4d5548]">
+                              決済URL: {paymentPath}
+                            </span>
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             <Link
-                              className="inline-flex h-10 items-center rounded-md border border-[#c3c7b9] px-4 font-semibold text-[#171a16]"
-                              href={`/pay/${product.id}`}
+                              className="inline-flex h-10 items-center rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white"
+                              href={paymentPath}
                             >
                               決済ページを開く
                             </Link>
-                            <CopyPathButton path={`/pay/${product.id}`} />
+                            <CopyPathButton label="決済URLをコピー" path={paymentPath} />
                           </div>
                         </div>
                         <button className="h-10 rounded-md bg-[#171a16] px-4 text-sm font-semibold text-white">
                           商品を保存
                         </button>
-                      </div>
-                    </form>
-                    <form action={toggleProduct}>
-                      <input name="product_id" type="hidden" value={product.id} />
-                      <input name="active" type="hidden" value={product.active ? "false" : "true"} />
-                      <button className="h-10 rounded-md border border-[#c3c7b9] px-4 text-sm font-semibold">
-                        {product.active ? "非公開にする" : "公開する"}
-                      </button>
-                    </form>
-                  </div>
-                ))
+                      </form>
+                      <form action={toggleProduct}>
+                        <input name="product_id" type="hidden" value={product.id} />
+                        <input name="active" type="hidden" value={product.active ? "false" : "true"} />
+                        <button className="h-10 rounded-md border border-[#c3c7b9] px-4 text-sm font-semibold">
+                          {product.active ? "非公開にする" : "公開する"}
+                        </button>
+                      </form>
+                    </div>
+                  );
+                })
               ) : (
-                <p className="text-sm text-[#65705f]">商品はまだありません。</p>
+                <p className="text-sm text-[#65705f]">
+                  商品はまだありません。上のフォームから商品を作成すると、決済URLが自動で表示されます。
+                </p>
               )}
             </div>
           </article>
@@ -389,8 +402,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <h3 className="font-semibold">{order.products?.name ?? "削除済み商品"}</h3>
                         <p className="mt-1 text-sm text-[#65705f]">
                           {order.amount_jpy ? `${formatJpy(order.amount_jpy)} / ` : ""}
-                          {formatUsdc(order.amount_usdc)} USDC ・{" "}
-                          {statusLabels[order.status] ?? order.status}
+                          {formatUsdc(order.amount_usdc)} USDC ・ {statusLabels[order.status] ?? order.status}
                         </p>
                         <p className="mt-1 text-xs text-[#65705f]">
                           {order.buyer_email || "購入者メールなし"}
