@@ -10,7 +10,7 @@ const navItems = [
   { label: '商品', href: '/dashboard/products' },
   { label: '注文', href: '/dashboard/orders' },
   { label: '決済履歴', href: '/dashboard/payments' },
-  { label: '設定', href: '/dashboard/settings' },
+  { label: '店舗設定', href: '/dashboard/settings' },
 ];
 
 export default function DashboardLayout({

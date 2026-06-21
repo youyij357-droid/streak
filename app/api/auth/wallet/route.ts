@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createShopSessionValue, SESSION_MAX_AGE_SECONDS } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
 
 const ipRequestMap = new Map<string, { count: number; resetAt: number }>();
@@ -45,11 +46,19 @@ export async function POST(request: Request) {
     }
 
     if (existing) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         isNewUser: !existing.shop_name,
         shopId: existing.id,
       });
+      response.cookies.set('streak-session', createShopSessionValue(existing.id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: SESSION_MAX_AGE_SECONDS,
+        path: '/',
+      });
+      return response;
     }
 
     // Step2: 存在しない場合のみINSERT
@@ -63,12 +72,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       isNewUser: !newShop.shop_name,
       shopId: newShop.id,
     });
+    response.cookies.set('streak-session', createShopSessionValue(newShop.id), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    });
+    return response;
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set('streak-session', '', {
+    httpOnly: true,
+    maxAge: 0,
+    path: '/',
+  });
+  return response;
 }

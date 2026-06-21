@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function About() {
   return (
@@ -6,7 +7,7 @@ export default function About() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-sm bg-white/80 border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/">
+          <Link href="/">
             <Image 
               src="/images/logo.png" 
               alt="STREAK Logo" 
@@ -15,10 +16,10 @@ export default function About() {
               priority
               className="h-10 w-auto"
             />
-          </a>
-          <a href="/" className="text-gray-700 hover:text-gray-900 transition font-medium">
+          </Link>
+          <Link href="/" className="text-gray-700 hover:text-gray-900 transition font-medium">
             Back to Home
-          </a>
+          </Link>
         </div>
       </nav>
 
@@ -138,7 +139,7 @@ export default function About() {
             <div className="p-8 rounded-2xl bg-gray-50 border border-gray-200">
               <h3 className="text-2xl font-bold text-gray-900 mb-3">Global</h3>
               <p className="text-gray-700 font-light mb-4">
-                Coming soon. We're expanding to serve merchants worldwide with cross-border Web3 payments.
+                Coming soon. We are expanding to serve merchants worldwide with cross-border Web3 payments.
               </p>
               <p className="text-sm text-gray-600 font-light">
                 Contact us for partnerships and early access.
@@ -154,7 +155,7 @@ export default function About() {
               Get in Touch
             </h2>
             <p className="text-lg text-gray-600 font-light mb-8">
-              Have questions? We'd love to hear from you.
+              Have questions? We would love to hear from you.
             </p>
             <a
               href="mailto:support@streak.io"

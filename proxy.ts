@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+    if (!request.cookies.has('admin-session')) {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -27,10 +36,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login') && !user) {
-    return NextResponse.redirect(new URL('/admin/login', request.url));
-  }
 
   if (pathname.startsWith('/dashboard') && !user) {
     const loginUrl = new URL('/login', request.url);

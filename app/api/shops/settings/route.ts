@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyShopSessionValue } from '@/lib/auth/session';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PUT(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // streak-session cookie と shopId を照合
-    const sessionShopId = request.cookies.get('streak-session')?.value;
+    const sessionShopId = verifyShopSessionValue(request.cookies.get('streak-session')?.value);
     if (!sessionShopId || sessionShopId !== body.shopId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
